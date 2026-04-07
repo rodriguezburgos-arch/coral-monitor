@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOAA Coral Reef Watch — Monitor Satelital v3</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- leaflet.heat inlined (cdnjs path unreliable) -->
+<script>
+(function(factory,window){if(typeof define==='function'&&define.amd){define(['leaflet'],factory);}else if(typeof exports==='object'){module.exports=factory(require('leaflet'));}else{factory(window.L,window);}}(function(L){L.HeatLayer=(L.Layer?L.Layer:L.Class).extend({initialize:function(latlngs,options){this._latlngs=latlngs;L.setOptions(this,options);},setLatLngs:function(latlngs){this._latlngs=latlngs;return this.redraw();},addLatLng:function(latlng){this._latlngs.push(latlng);return this.redraw();},setOptions:function(options){L.setOptions(this,options);if(this._heat){this._updateOptions();}return this.redraw();},redraw:function(){if(this._heat&&!this._frame&&this._map&&!this._map._animating){this._frame=L.Util.requestAnimFrame(this._redraw,this);}return this;},onAdd:function(map){this._map=map;if(!this._canvas){this._initCanvas();}if(this.options.pane){this.getPane().appendChild(this._canvas);}else{map._panes.overlayPane.appendChild(this._canvas);}map.on('moveend',this._reset,this);if(map.options.zoomAnimation&&L.Browser.any3d){map.on('zoomanim',this._animateZoom,this);}this._reset();},onRemove:function(map){if(this.options.pane){this.getPane().removeChild(this._canvas);}else{map.getPanes().overlayPane.removeChild(this._canvas);}map.off('moveend',this._reset,this);if(map.options.zoomAnimation){map.off('zoomanim',this._animateZoom,this);}},addTo:function(map){map.addLayer(this);return this;},_initCanvas:function(){var canvas=this._canvas=L.DomUtil.create('canvas','leaflet-heatmap-layer leaflet-layer');var size=this._map.getSize();canvas.width=size.x;canvas.height=size.y;var animated=this._map.options.zoomAnimation&&L.Browser.any3d;L.DomUtil.addClass(canvas,'leaflet-zoom-'+(animated?'animated':'hide'));this._heat=simpleheat(canvas);this._updateOptions();},_updateOptions:function(){this._heat.radius(this.options.radius||this._heat.defaultRadius,this.options.blur);if(this.options.gradient){this._heat.gradient(this.options.gradient);}if(this.options.minOpacity){this._heat.minOpacity(this.options.minOpacity);}},_reset:function(){var topLeft=this._map.containerPointToLayerPoint([0,0]);L.DomUtil.setPosition(this._canvas,topLeft);var size=this._map.getSize();if(this._heat._width!==size.x){this._canvas.width=this._heat._width=size.x;}if(this._heat._height!==size.y){this._canvas.height=this._heat._height=size.y;}this._redraw();},_redraw:function(){this._frame=null;if(!this._map){return;}var data=[],r=this._heat._r,size=this._map.getSize(),bounds=new L.Bounds(L.point([-r,-r]),size.add([r,r])),max=this.options.max===undefined?1:this.options.max,maxZoom=this.options.maxZoom===undefined?this._map.getMaxZoom():this.options.maxZoom,v=1/Math.pow(2,Math.max(0,Math.min(maxZoom-this._map.getZoom(),12))),cellSize=r/2,grid=[],panePos=this._map._getMapPanePos(),offsetX=panePos.x%cellSize,offsetY=panePos.y%cellSize,i,len,latlng,point,cell,x,y,j;for(i=0,len=this._latlngs.length;i<len;i++){latlng=this._latlngs[i];point=this._map.latLngToContainerPoint(latlng);x=Math.floor((point.x-offsetX)/cellSize)+2;y=Math.floor((point.y-offsetY)/cellSize)+2;var alt=latlng.alt!==undefined?latlng.alt:latlng[2]!==undefined?+latlng[2]:1;var k=alt*v;if(!bounds.contains(point)){continue;}if(!(j=grid[y])){j=grid[y]=[];}if(!(cell=j[x])){cell=j[x]=[point.x,point.y,0];}cell[2]+=k;}for(i=0,len=grid.length;i<len;i++){if(grid[i]){for(j=0,len2=grid[i].length;j<len2;j++){if(grid[i][j]){data.push(grid[i][j]);}}}}this._heat.data(data).draw(this.options.minOpacity);this._frame=null;},_animateZoom:function(e){var scale=this._map.getZoomScale(e.zoom),offset=this._map._getCenterOffset(e.center)._multiplyBy(-scale).subtract(this._map._getMapPanePos());if(L.DomUtil.setTransform){L.DomUtil.setTransform(this._canvas,offset,scale);}else{this._canvas.style[L.DomUtil.TRANSFORM]=L.DomUtil.getTranslateString(offset)+' scale('+scale+')';}}}); L.heatLayer=function(latlngs,options){return new L.HeatLayer(latlngs,options);};},window));
+// simpleheat
+function simpleheat(canvas){if(!(this instanceof simpleheat))return new simpleheat(canvas);this._canvas=canvas=typeof canvas==='string'?document.getElementById(canvas):canvas;this._ctx=canvas.getContext('2d');this._width=canvas.width;this._height=canvas.height;this._max=1;this._data=[];}simpleheat.prototype={defaultRadius:25,defaultGradient:{0.4:'blue',0.6:'cyan',0.7:'lime',0.8:'yellow',1:'red'},data:function(data){this._data=data;return this;},max:function(max){this._max=max;return this;},add:function(point){this._data.push(point);return this;},clear:function(){this._data=[];return this;},radius:function(r,blur){blur=blur===undefined?15:blur;var circle=this._circle=this._createCanvas(),ctx=circle.getContext('2d'),r2=this._r=r+blur;circle.width=circle.height=r2*2;ctx.shadowOffsetX=ctx.shadowOffsetY=r2*2;ctx.shadowBlur=blur;ctx.shadowColor='black';ctx.beginPath();ctx.arc(-r2,r2+0,r,0,Math.PI*2,true);ctx.closePath();ctx.fill();return this;},resize:function(){this._width=this._canvas.width;this._height=this._canvas.height;},gradient:function(grad){var canvas=this._createCanvas(),ctx=canvas.getContext('2d'),gradient=ctx.createLinearGradient(0,0,0,256);canvas.width=1;canvas.height=256;for(var i in grad){gradient.addColorStop(+i,grad[i]);}ctx.fillStyle=gradient;ctx.fillRect(0,0,1,256);this._grad=ctx.getImageData(0,0,1,256).data;return this;},minOpacity:function(opacity){this._minOpacity=opacity;return this;},draw:function(minOpacity){if(!this._circle)this.radius(this.defaultRadius);if(!this._grad)this.gradient(this.defaultGradient);var ctx=this._ctx;ctx.clearRect(0,0,this._width,this._height);for(var i=0,len=this._data.length,p;i<len;i++){p=this._data[i];ctx.globalAlpha=Math.min(Math.max(p[2]/this._max,minOpacity===undefined?0.05:minOpacity),1);ctx.drawImage(this._circle,p[0]-this._r,p[1]-this._r);}var colored=ctx.getImageData(0,0,this._width,this._height);this._colorize(colored.data,this._grad);ctx.putImageData(colored,0,0);return this;},_colorize:function(pixels,gradient){for(var i=3,len=pixels.length,j;i<len;i+=4){j=pixels[i]*4;if(j){pixels[i-3]=gradient[j];pixels[i-2]=gradient[j+1];pixels[i-1]=gradient[j+2];}}},_createCanvas:function(){if(typeof document!=='undefined'){return document.createElement('canvas');}else{return new this._canvas.constructor();}}};
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080d12;--surf:#0d1820;--surf2:#142030;--surf3:#1a2840;
+  --bd:rgba(255,255,255,.10);--bd2:rgba(255,255,255,.20);
+  --t1:#fff;--t2:#c8daea;--t3:#8aaec8;--t4:#506070;
+  --green:#1D9E75;--green2:#0F6E56;
+  --fd:'Space Mono',monospace;--fb:'DM Sans',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--t2);font-family:var(--fb);overflow:hidden;}
+
+/* ── LAYOUT ── */
+#layout{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:1fr 340px;height:100vh;}
+#layout.fullscreen #map-wrap{grid-column:1/-1;grid-row:3;}
+#layout.fullscreen #sidebar{display:none;}
+#hdr1{grid-column:1/-1;background:var(--surf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 18px;gap:12px;height:52px;}
+#logo{display:flex;align-items:center;gap:10px;font-family:var(--fd);font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--t1);white-space:nowrap;}
+.logo-mark{width:30px;height:30px;border-radius:7px;background:var(--green2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.live-pill{display:flex;align-items:center;gap:5px;background:rgba(29,158,117,.15);border:1px solid rgba(29,158,117,.35);border-radius:20px;padding:3px 10px;font-size:10px;font-family:var(--fd);color:var(--green);letter-spacing:.08em;white-space:nowrap;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.spacer{flex:1;}
+
+/* update timer */
+#update-timer{font-family:var(--fd);font-size:9px;color:var(--t4);letter-spacing:.06em;white-space:nowrap;}
+#update-timer span{color:var(--green);}
+
+/* search */
+#search-wrap{position:relative;display:flex;align-items:center;}
+#search-input{background:rgba(255,255,255,.07);border:1px solid var(--bd2);color:var(--t2);font-family:var(--fb);font-size:11px;padding:5px 30px 5px 11px;border-radius:20px;outline:none;width:170px;transition:all .2s;}
+#search-input::placeholder{color:var(--t4);}
+#search-input:focus{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);width:210px;color:var(--t1);}
+.search-icon{position:absolute;right:10px;color:var(--t4);font-size:11px;pointer-events:none;}
+#search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surf3);border:1px solid var(--bd2);border-radius:8px;z-index:2000;display:none;max-height:220px;overflow-y:auto;}
+.sr-item{padding:8px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .12s;}
+.sr-item:hover{background:rgba(255,255,255,.08);color:var(--t1);}
+.sr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+.icon-btn{background:rgba(255,255,255,.07);border:1px solid var(--bd2);color:var(--t2);font-size:14px;width:32px;height:32px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.icon-btn:hover{background:rgba(255,255,255,.14);color:var(--t1);}
+.icon-btn.active{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.4);color:var(--t1);}
+.base-btn{background:rgba(255,255,255,.07);border:1px solid var(--bd2);color:var(--t2);font-family:var(--fd);font-size:10px;font-weight:700;letter-spacing:.07em;padding:5px 12px;border-radius:5px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.base-btn:hover{background:rgba(255,255,255,.14);color:var(--t1);}
+.base-btn.active{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5);color:var(--t1);}
+#date-disp{font-family:var(--fd);font-size:10px;color:var(--t3);letter-spacing:.06em;padding-left:12px;border-left:1px solid var(--bd2);white-space:nowrap;}
+
+#hdr2{grid-column:1/-1;background:var(--surf2);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 18px;gap:6px;height:44px;overflow-x:auto;scrollbar-width:none;}
+#hdr2::-webkit-scrollbar{display:none;}
+.hdr2-lbl{font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--t4);white-space:nowrap;padding-right:10px;border-right:1px solid var(--bd2);margin-right:4px;}
+.sg{display:flex;align-items:center;gap:4px;padding-right:10px;border-right:1px solid var(--bd);}
+.sg:last-child{border-right:none;}
+.sg-lbl{font-size:9px;color:var(--t4);letter-spacing:.06em;margin-right:2px;white-space:nowrap;}
+.lbtn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:var(--t3);font-family:var(--fb);font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.lbtn:hover{background:rgba(255,255,255,.11);color:var(--t1);border-color:var(--bd2);}
+.lbtn.active{color:#fff;border-color:transparent;font-weight:600;}
+.lbtn.active.gt{background:#A32D2D;}.lbtn.active.go{background:#185FA5;}
+.lbtn.active.gb{background:#3B6D11;}.lbtn.active.ga{background:#854F0B;}
+.lbtn.active.gh{background:#534AB7;}
+.lbtn.active.gs{background:#7B2D8B;}
+
+/* ── MAP ── */
+#map-wrap{position:relative;background:#040810;overflow:hidden;}
+#map{width:100%;height:100%;}
+#sensor-badge{position:absolute;top:12px;left:14px;z-index:900;background:rgba(8,13,18,.9);border:1px solid var(--bd2);border-radius:8px;padding:7px 12px;font-size:11px;color:var(--t2);max-width:300px;display:none;}
+#sensor-badge strong{color:var(--t1);font-size:12px;display:block;margin-bottom:2px;}
+#legend{position:absolute;bottom:44px;left:14px;z-index:900;background:rgba(8,13,18,.92);border:1px solid var(--bd2);border-radius:10px;padding:12px 15px;min-width:190px;}
+#leg-title{font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--t1);margin-bottom:9px;}
+.leg-row{display:flex;align-items:center;gap:9px;margin-bottom:5px;font-size:11px;color:var(--t2);}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+#statsbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:900;display:flex;gap:6px;}
+.s-chip{background:rgba(8,13,18,.92);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px;color:var(--t2);white-space:nowrap;cursor:pointer;transition:border-color .15s;}
+.s-chip:hover{border-color:rgba(255,255,255,.35);color:var(--t1);}
+.s-dot{width:7px;height:7px;border-radius:50%;}
+
+/* heatmap toggle */
+#heatmap-toggle{position:absolute;bottom:44px;right:14px;z-index:900;background:rgba(8,13,18,.92);border:1px solid var(--bd2);border-radius:8px;padding:6px 11px;font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.07em;color:var(--t3);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;}
+#heatmap-toggle:hover{background:rgba(255,255,255,.1);color:var(--t1);}
+#heatmap-toggle.on{background:rgba(29,158,117,.15);border-color:rgba(29,158,117,.4);color:var(--green);}
+.hm-dot{width:7px;height:7px;border-radius:50%;background:var(--t4);}
+#heatmap-toggle.on .hm-dot{background:var(--green);}
+
+/* timeline */
+#timeline-wrap{position:absolute;bottom:0;left:0;right:0;z-index:910;background:rgba(8,13,18,.94);border-top:1px solid var(--bd2);padding:8px 16px;display:none;}
+#timeline-wrap.show{display:block;}
+.tl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.tl-title{font-family:var(--fd);font-size:9px;letter-spacing:.1em;color:var(--t3);}
+.tl-val{font-family:var(--fd);font-size:11px;color:var(--t1);}
+#timeline-close{background:none;border:none;color:var(--t4);cursor:pointer;font-size:14px;}
+#timeline-slider{width:100%;accent-color:var(--green);cursor:pointer;}
+.tl-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--t4);font-family:var(--fd);margin-top:2px;}
+
+/* filter panel */
+#filter-toggle{position:absolute;top:12px;right:14px;z-index:901;background:rgba(8,13,18,.92);border:1px solid var(--bd2);border-radius:8px;padding:6px 12px;font-family:var(--fd);font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;}
+#filter-toggle:hover{background:rgba(255,255,255,.1);color:var(--t1);}
+.ft-dot{width:7px;height:7px;border-radius:50%;background:var(--green);}
+#filter-panel{position:absolute;top:12px;right:14px;z-index:900;background:rgba(8,13,18,.97);border:1px solid var(--bd2);border-radius:10px;padding:14px;min-width:210px;backdrop-filter:blur(8px);display:none;}
+.fp-title{font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--t3);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.fp-close{background:none;border:none;color:var(--t4);font-size:15px;cursor:pointer;padding:0;line-height:1;}
+.fp-close:hover{color:var(--t1);}
+.fp-section{margin-bottom:10px;}
+.fp-slbl{font-size:9px;color:var(--t4);font-weight:700;letter-spacing:.08em;margin-bottom:5px;}
+.fp-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;cursor:pointer;}
+.fp-row input[type=checkbox]{accent-color:var(--green);width:13px;height:13px;cursor:pointer;flex-shrink:0;}
+.fp-row-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.fp-row span{font-size:11px;color:var(--t2);}
+.fp-row:hover span{color:var(--t1);}
+.fp-divider{height:1px;background:var(--bd);margin:8px 0;}
+.fp-actions{display:flex;gap:5px;}
+.fp-act-btn{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:5px;color:var(--t3);font-size:10px;font-family:var(--fd);padding:5px;cursor:pointer;text-align:center;transition:all .15s;}
+.fp-act-btn:hover{background:rgba(255,255,255,.12);color:var(--t1);}
+.fp-count{font-size:9px;color:var(--t4);text-align:center;margin-top:7px;font-family:var(--fd);letter-spacing:.05em;}
+
+/* compare bar */
+#compare-bar{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);z-index:902;background:rgba(8,13,18,.96);border:1px solid var(--bd2);border-radius:10px;padding:9px 13px;display:none;align-items:center;gap:9px;white-space:nowrap;backdrop-filter:blur(6px);}
+#compare-bar.show{display:flex;}
+.cb-lbl{font-family:var(--fd);font-size:9px;letter-spacing:.08em;color:var(--t3);}
+.cb-tags{display:flex;gap:5px;}
+.cb-tag{background:rgba(255,255,255,.1);border:1px solid var(--bd2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--t2);display:flex;align-items:center;gap:5px;}
+.cb-tag-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cb-tag-x{cursor:pointer;color:var(--t4);font-size:12px;}
+.cb-tag-x:hover{color:var(--t1);}
+#compare-go{background:var(--green2);border:1px solid var(--green);color:#fff;font-family:var(--fd);font-size:10px;padding:5px 12px;border-radius:5px;cursor:pointer;letter-spacing:.05em;transition:background .15s;}
+#compare-go:hover{background:var(--green);}
+#compare-go:disabled{opacity:.4;cursor:default;}
+#compare-clear{background:none;border:1px solid var(--bd);color:var(--t4);font-size:10px;padding:5px 8px;border-radius:5px;cursor:pointer;}
+#compare-clear:hover{color:var(--t2);}
+
+/* ── SIDEBAR ── */
+#sidebar{background:var(--surf);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden;}
+#stabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--bd);flex-shrink:0;}
+#stabs::-webkit-scrollbar{display:none;}
+.stab{flex:none;background:none;border:none;color:var(--t4);font-family:var(--fb);font-size:10px;font-weight:600;padding:9px 4px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;text-align:center;}
+.stab:hover{color:var(--t3);background:rgba(255,255,255,.03);}
+.stab.active{color:var(--t1);border-bottom-color:var(--green);background:rgba(29,158,117,.06);}
+/* second row tabs get a top separator */
+.stab:nth-child(5),.stab:nth-child(6),.stab:nth-child(7){border-top:1px solid var(--bd);}
+#scontent{flex:1;overflow-y:auto;padding:14px;scrollbar-width:thin;scrollbar-color:var(--bd) transparent;}
+#scontent::-webkit-scrollbar{width:3px;}
+#scontent::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
+
+/* detail tab */
+#placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--t3);text-align:center;padding:20px;}
+#placeholder p{font-size:12px;line-height:1.6;}
+.ph-icon{width:46px;height:46px;border:1px solid var(--bd2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;}
+#reef-detail{display:none;}
+.d-name{font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:8px;line-height:1.4;letter-spacing:.03em;}
+.d-name-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;}
+.watch-btn{background:none;border:1px solid var(--bd2);border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;color:var(--t4);transition:all .15s;flex-shrink:0;}
+.watch-btn:hover{border-color:rgba(239,159,39,.5);color:#EF9F27;}
+.watch-btn.watching{border-color:rgba(239,159,39,.5);color:#EF9F27;background:rgba(239,159,39,.08);}
+.al-badge{display:inline-flex;align-items:center;font-size:11px;font-family:var(--fd);padding:4px 11px;border-radius:4px;margin-bottom:10px;letter-spacing:.05em;}
+.b0{background:rgba(15,110,86,.2);color:#1D9E75;border:1px solid rgba(29,158,117,.3);}
+.b1{background:rgba(133,79,11,.2);color:#EF9F27;border:1px solid rgba(239,159,39,.3);}
+.b2{background:rgba(153,60,29,.2);color:#D85A30;border:1px solid rgba(216,90,48,.3);}
+.b3{background:rgba(163,45,45,.2);color:#E24B4A;border:1px solid rgba(226,75,74,.3);}
+.b4{background:rgba(121,31,31,.3);color:#F09595;border:1px solid rgba(163,45,45,.5);}
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.mbox{background:var(--surf2);border:1px solid var(--bd);border-radius:7px;padding:9px;}
+.mbox .ml{font-size:9px;color:var(--t3);font-weight:700;letter-spacing:.06em;margin-bottom:3px;}
+.mbox .mv{font-size:16px;font-family:var(--fd);font-weight:700;}
+.mbox .mv.sm{font-size:11px;font-family:var(--fb);padding-top:3px;}
+.divline{height:1px;background:var(--bd);margin:10px 0;}
+.dhw-lbl{font-size:9px;color:var(--t3);font-weight:700;letter-spacing:.07em;margin-bottom:6px;}
+.dhw-track{height:6px;background:var(--surf2);border-radius:3px;overflow:hidden;}
+.dhw-fill{height:100%;border-radius:3px;transition:width .5s ease;}
+.th-pills{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;}
+.th-p{font-size:9px;padding:2px 6px;border-radius:3px;}
+.act-lbl{font-size:9px;color:var(--t3);font-weight:700;letter-spacing:.08em;margin-bottom:7px;}
+.act-txt{font-size:11px;color:var(--t2);line-height:1.7;}
+.d-btn{margin-top:10px;width:100%;padding:9px;background:rgba(29,158,117,.1);border:1px solid rgba(29,158,117,.3);border-radius:7px;color:var(--green);font-family:var(--fb);font-size:12px;cursor:pointer;text-align:left;transition:background .15s;}
+.d-btn:hover{background:rgba(29,158,117,.18);}
+.export-btn{margin-top:6px;width:100%;padding:9px;background:rgba(83,74,183,.1);border:1px solid rgba(83,74,183,.3);border-radius:7px;color:#AFA9EC;font-family:var(--fb);font-size:12px;cursor:pointer;text-align:left;transition:background .15s;}
+.export-btn:hover{background:rgba(83,74,183,.18);}
+
+/* sensor grid */
+.sensor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:4px;}
+.sp-cell{background:var(--surf2);border:1px solid var(--bd);border-radius:6px;padding:5px 7px;transition:border-color .15s;}
+.sp-cell.active{border-color:rgba(255,255,255,.35);background:var(--surf3);}
+.sp-cell-lbl{font-size:7px;color:var(--t3);font-weight:700;letter-spacing:.06em;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sp-cell-val{font-size:11px;font-family:var(--fd);font-weight:700;}
+.sp-footer{font-size:9px;color:var(--t4);font-family:var(--fd);letter-spacing:.04em;padding-top:8px;margin-top:4px;border-top:1px solid var(--bd);}
+.sp-compare-btn{margin-top:0;width:auto;padding:4px 10px;font-size:10px;background:rgba(83,74,183,.12);border:1px solid rgba(83,74,183,.3);border-radius:6px;color:#AFA9EC;cursor:pointer;text-align:center;transition:background .15s;}
+.sp-compare-btn:hover{background:rgba(83,74,183,.25);}
+.sp-compare-btn.added{background:rgba(83,74,183,.25);border-color:rgba(83,74,183,.6);color:#d0ccff;}
+
+/* chart */
+.chart-wrap{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-bottom:10px;}
+.chart-title{font-family:var(--fd);font-size:9px;letter-spacing:.1em;color:var(--t3);margin-bottom:8px;}
+.chart-canvas-wrap{height:110px;position:relative;}
+
+/* risk index badge */
+.risk-index{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:10px;}
+.ri-label{font-size:9px;color:var(--t3);font-weight:700;letter-spacing:.07em;flex:1;}
+.ri-bar{flex:2;height:6px;background:var(--surf3);border-radius:3px;overflow:hidden;}
+.ri-fill{height:100%;border-radius:3px;transition:width .5s;}
+.ri-val{font-family:var(--fd);font-size:13px;font-weight:700;min-width:28px;text-align:right;}
+
+/* regions */
+.rlist{display:flex;flex-direction:column;gap:6px;}
+.ritem{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;cursor:pointer;transition:border-color .15s;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ritem:hover{border-color:var(--bd2);}
+.ritem.sel{border-color:rgba(255,255,255,.3);}
+.rn{font-size:12px;color:var(--t1);font-weight:500;margin-bottom:3px;}
+.rs{font-size:11px;color:var(--t3);}
+.rmbar{height:3px;border-radius:2px;margin-top:5px;}
+.rdhw{font-family:var(--fd);font-size:13px;font-weight:700;}
+.rsst{font-size:10px;color:var(--t3);font-weight:500;margin-top:2px;}
+
+/* compare tab - display controlled by JS */
+#tab-compare{}
+.cmp-header{font-family:var(--fd);font-size:9px;letter-spacing:.1em;color:var(--t3);margin-bottom:10px;}
+.cmp-empty{color:var(--t4);font-size:12px;text-align:center;padding:30px 0;}
+.cmp-grid{display:flex;flex-direction:column;gap:10px;}
+.cmp-card{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;overflow:hidden;}
+.cmp-name{font-size:11px;font-weight:700;color:var(--t1);padding:9px 11px 6px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.cmp-badge{font-size:9px;font-family:var(--fd);padding:2px 7px;border-radius:3px;}
+.cmp-rows{padding:6px 11px 9px;display:flex;flex-direction:column;gap:4px;}
+.cmp-row{display:flex;justify-content:space-between;font-size:11px;}
+.cmp-row-l{color:var(--t3);}
+.cmp-row-v{font-family:var(--fd);font-weight:700;}
+.cmp-remove{background:none;border:none;color:var(--t4);cursor:pointer;font-size:13px;padding:0;}
+.cmp-remove:hover{color:#E24B4A;}
+#clear-compare{margin-top:10px;width:100%;padding:8px;background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:7px;color:var(--t4);font-size:11px;cursor:pointer;}
+#clear-compare:hover{color:var(--t2);border-color:var(--bd2);}
+/* correlation chart in compare */
+.corr-wrap{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-top:10px;}
+
+/* dashboard/colombia/alerts - display controlled by JS */
+#tab-dashboard{}
+.dash-section{margin-bottom:16px;}
+.dash-lbl{font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--t3);margin-bottom:8px;}
+.dash-kpis{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
+.dash-kpi{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px;}
+.dash-kpi-l{font-size:9px;color:var(--t3);font-weight:700;letter-spacing:.06em;margin-bottom:4px;}
+.dash-kpi-v{font-size:20px;font-family:var(--fd);font-weight:700;}
+.dash-kpi-sub{font-size:10px;color:var(--t3);margin-top:2px;}
+.trend-up{color:#E24B4A;}.trend-dn{color:#1D9E75;}.trend-flat{color:#EF9F27;}
+.alert-dist{display:flex;gap:3px;height:24px;border-radius:5px;overflow:hidden;margin-bottom:8px;}
+.ad-seg{display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--fd);color:rgba(255,255,255,.85);font-weight:700;}
+.top-list{display:flex;flex-direction:column;gap:4px;}
+.top-row{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--bd);border-radius:6px;padding:6px 9px;cursor:pointer;}
+.top-row:hover{border-color:var(--bd2);}
+.top-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.top-name{font-size:11px;color:var(--t2);flex:1;}
+.top-val{font-size:11px;font-family:var(--fd);font-weight:700;}
+
+/* colombia/alerts - display controlled by JS */
+#tab-colombia{}
+.co-header{display:flex;align-items:center;gap:10px;background:rgba(29,158,117,.08);border:1px solid rgba(29,158,117,.2);border-radius:8px;padding:10px 12px;margin-bottom:12px;}
+.co-flag{font-size:22px;}
+.co-title{font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);letter-spacing:.04em;}
+.co-sub{font-size:10px;color:var(--t3);margin-top:2px;}
+.co-sites{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.co-site{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .15s;}
+.co-site:hover{border-color:var(--bd2);}
+.co-site-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.co-site-name{font-size:12px;font-weight:600;color:var(--t1);}
+.co-site-vals{display:flex;gap:10px;font-size:11px;color:var(--t3);}
+.co-site-val{font-family:var(--fd);font-weight:700;}
+.co-agency{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.co-ag-tag{font-size:9px;padding:2px 7px;border-radius:20px;background:rgba(29,158,117,.12);border:1px solid rgba(29,158,117,.25);color:var(--green);}
+.co-report-btn{width:100%;padding:10px;background:rgba(29,158,117,.12);border:1px solid rgba(29,158,117,.3);border-radius:8px;color:var(--green);font-family:var(--fb);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;margin-bottom:6px;}
+.co-report-btn:hover{background:rgba(29,158,117,.22);}
+
+/* alerts - display controlled by JS */
+#tab-alerts{}
+
+/* forecast */
+.fc-card{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
+.fc-card:hover{border-color:var(--bd2);}
+.fc-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+.fc-name{font-size:11px;font-weight:600;color:var(--t1);flex:1;line-height:1.3;}
+.fc-prob{font-family:var(--fd);font-size:14px;font-weight:700;text-align:right;}
+.fc-prob-lbl{font-size:8px;color:var(--t4);text-align:right;font-family:var(--fd);}
+.fc-bars{display:flex;flex-direction:column;gap:4px;}
+.fc-bar-row{display:flex;align-items:center;gap:7px;}
+.fc-bar-lbl{font-size:9px;color:var(--t4);width:52px;flex-shrink:0;}
+.fc-bar-track{flex:1;height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;}
+.fc-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+.fc-bar-val{font-size:9px;font-family:var(--fd);font-weight:700;min-width:36px;text-align:right;}
+.fc-footer{display:flex;align-items:center;justify-content:space-between;margin-top:7px;padding-top:7px;border-top:1px solid var(--bd);}
+.fc-trend{font-size:10px;font-weight:600;}
+.fc-date{font-size:9px;color:var(--t4);font-family:var(--fd);}
+.fc-highlight{border-color:rgba(226,75,74,.4)!important;background:rgba(226,75,74,.04)!important;}
+.al-empty{color:var(--t4);font-size:12px;text-align:center;padding:30px 0;line-height:1.7;}
+.al-item{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;}
+.al-item:hover{border-color:var(--bd2);}
+.al-item-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.al-item-name{font-size:12px;font-weight:600;color:var(--t1);flex:1;}
+.al-item-time{font-size:9px;color:var(--t4);font-family:var(--fd);}
+.al-item-msg{font-size:11px;color:var(--t3);}
+.watch-list{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.wl-item{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--bd);border-radius:6px;padding:7px 10px;}
+.wl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.wl-name{font-size:11px;color:var(--t2);flex:1;}
+.wl-remove{background:none;border:none;color:var(--t4);cursor:pointer;font-size:12px;}
+.wl-remove:hover{color:#E24B4A;}
+
+/* guide */
+.ah{font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--t3);margin-bottom:8px;}
+.ap{font-size:12px;color:var(--t2);line-height:1.7;}
+.alink{color:var(--green);text-decoration:none;}
+.alink:hover{text-decoration:underline;}
+.asec{margin-bottom:16px;}
+.gcards{display:flex;flex-direction:column;gap:6px;}
+.gcard{background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:10px 11px;display:flex;gap:10px;align-items:flex-start;}
+.gico{font-size:17px;flex-shrink:0;width:26px;text-align:center;margin-top:1px;}
+.gtitle{font-size:12px;font-weight:700;color:var(--t1);font-family:var(--fd);margin-bottom:5px;}
+.gdesc{font-size:11px;color:var(--t2);line-height:1.6;}
+
+/* notification toast */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--surf3);border:1px solid var(--bd2);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--t2);display:none;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+#toast.show{display:block;animation:fadeIn .3s ease;}
+#toast strong{color:var(--t1);display:block;margin-bottom:3px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* leaflet */
+.leaflet-container{background:#040810;}
+.leaflet-control-zoom a{background:rgba(8,13,18,.9)!important;border-color:var(--bd2)!important;color:var(--t3)!important;}
+.leaflet-control-zoom a:hover{color:var(--t1)!important;}
+.leaflet-control-attribution{background:rgba(8,13,18,.6)!important;color:var(--t4)!important;font-size:9px!important;}
+.leaflet-tooltip{background:rgba(8,13,18,.92)!important;border:1px solid var(--bd2)!important;color:var(--t1)!important;border-radius:6px!important;font-family:'DM Sans',sans-serif!important;font-size:12px!important;padding:6px 10px!important;box-shadow:none!important;}
+.leaflet-tooltip::before{display:none!important;}
+@keyframes ringPulse{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.4);opacity:0}}
+.pulse-ring{animation:ringPulse 2.2s ease-out infinite;transform-origin:center;}
+
+/* mobile */
+@media(max-width:768px){
+  #layout{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto;}
+  #map-wrap{min-height:55vh;}
+  #sidebar{height:45vh;border-left:none;border-top:1px solid var(--bd);}
+  #search-input{width:120px;}
+  #date-disp,#update-timer{display:none;}
+}
+</style>
+</head>
+<body>
+<div id="layout">
+
+<header id="hdr1">
+  <div id="logo"><div class="logo-mark">🪸</div>CORAL REEF WATCH<div class="live-pill"><div class="live-dot"></div>LIVE</div></div>
+  <div id="search-wrap">
+    <input id="search-input" type="text" placeholder="Buscar arrecife…" autocomplete="off" oninput="onSearch(this.value)" onkeydown="onSearchKey(event)">
+    <span class="search-icon">🔍</span>
+    <div id="search-results"></div>
+  </div>
+  <div class="spacer"></div>
+  <div id="update-timer">PRÓX. ACTUALIZ. <span id="timer-val">24:00:00</span></div>
+  <button class="icon-btn" onclick="toggleFullscreen()" title="Pantalla completa" id="fs-btn">⛶</button>
+  <button class="icon-btn" onclick="toggleTimeline()" title="Timeline" id="tl-btn">⏱</button>
+  <button class="icon-btn" onclick="shareApp()" title="Compartir por WhatsApp" style="background:rgba(37,211,102,.12);border-color:rgba(37,211,102,.35);color:#25D366;font-size:16px;">📲</button>
+  <button class="base-btn active" onclick="setBase('satellite',this)">SATELLITE</button>
+  <button class="base-btn" onclick="setBase('hybrid',this)">HÍBRIDO</button>
+  <div id="date-disp"></div>
+</header>
+
+<div id="hdr2">
+  <span class="hdr2-lbl">CAPA DE DATOS</span>
+  <div class="sg"><span class="sg-lbl">TÉRMICO</span>
+    <button class="lbtn gt active" onclick="setLayer('alert',this)">Alerta</button>
+    <button class="lbtn gt" onclick="setLayer('sst',this)">SST</button>
+    <button class="lbtn gt" onclick="setLayer('dhw',this)">DHW</button>
+  </div>
+  <div class="sg"><span class="sg-lbl">OCÉANO</span>
+    <button class="lbtn go" onclick="setLayer('sla',this)">Nivel Mar</button>
+    <button class="lbtn go" onclick="setLayer('wind',this)">Viento</button>
+  </div>
+  <div class="sg"><span class="sg-lbl">BIOLÓGICO</span>
+    <button class="lbtn gb" onclick="setLayer('chl',this)">Clorofila</button>
+    <button class="lbtn gb" onclick="setLayer('turb',this)">Turbidez</button>
+  </div>
+  <div class="sg"><span class="sg-lbl">ATMÓSFERA</span>
+    <button class="lbtn ga" onclick="setLayer('co2',this)">CO2</button>
+    <button class="lbtn ga" onclick="setLayer('uv',this)">UV</button>
+    <button class="lbtn ga" onclick="setLayer('rain',this)">Lluvia</button>
+  </div>
+  <div class="sg"><span class="sg-lbl">HÁBITAT</span>
+    <button class="lbtn gh" onclick="setLayer('habitat',this)">Hábitat</button>
+    <button class="lbtn gh" onclick="setLayer('bathy',this)">Batimetría</button>
+  </div>
+  <div class="sg"><span class="sg-lbl" style="color:#9B4FB8;">SARGAZO</span>
+    <button class="lbtn gs" style="border-color:rgba(123,45,139,.4);color:#C47FD8;" onclick="setLayer('sarg',this)">🟤 Sargazo</button>
+  </div>
+</div>
+
+<div id="map-wrap">
+  <div id="map"></div>
+  <div id="sensor-badge"></div>
+  <div id="legend"><div id="leg-title"></div><div id="leg-body"></div></div>
+  <div id="statsbar">
+    <div class="s-chip" onclick="quickFilter('critical')"><div class="s-dot" style="background:#A32D2D;"></div><span id="st-c"></span></div>
+    <div class="s-chip" onclick="quickFilter('watch')"><div class="s-dot" style="background:#EF9F27;"></div><span id="st-w"></span></div>
+    <div class="s-chip" onclick="quickFilter('ok')"><div class="s-dot" style="background:#1D9E75;"></div><span id="st-ok"></span></div>
+    <div class="s-chip" onclick="quickFilter('all')" style="padding:5px 10px;">✕ Todo</div>
+  </div>
+  <button id="heatmap-toggle" onclick="toggleHeatmap()"><div class="hm-dot"></div>HEATMAP</button>
+  <button id="filter-toggle" onclick="toggleFilterPanel();event.stopPropagation()"><div class="ft-dot"></div>FILTROS <span id="filter-active-badge"></span></button>
+  <div id="filter-panel" onclick="event.stopPropagation()">
+    <div class="fp-title">FILTROS DE MAPA <button class="fp-close" onclick="toggleFilterPanel()">✕</button></div>
+    <div class="fp-section">
+      <div class="fp-slbl">NIVEL DE ALERTA</div>
+      <label class="fp-row"><input type="checkbox" checked data-filter="al" data-val="4" onchange="applyFilters()"><div class="fp-row-dot" style="background:#A32D2D;"></div><span>Alerta 4 — Mortalidad severa</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="al" data-val="3" onchange="applyFilters()"><div class="fp-row-dot" style="background:#E24B4A;"></div><span>Alerta 3 — Blanqueamiento masivo</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="al" data-val="2" onchange="applyFilters()"><div class="fp-row-dot" style="background:#D85A30;"></div><span>Alerta 2 — Probable</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="al" data-val="1" onchange="applyFilters()"><div class="fp-row-dot" style="background:#EF9F27;"></div><span>Alerta 1 — Posible</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="al" data-val="0" onchange="applyFilters()"><div class="fp-row-dot" style="background:#1D9E75;"></div><span>Sin estrés</span></label>
+    </div>
+    <div class="fp-divider"></div>
+    <div class="fp-section">
+      <div class="fp-slbl">REGIÓN</div>
+      <label class="fp-row"><input type="checkbox" checked data-filter="region" data-val="co" onchange="applyFilters()"><span>🇨🇴 Colombia</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="region" data-val="gbr" onchange="applyFilters()"><span>🇦🇺 Great Barrier Reef</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="region" data-val="caribe" onchange="applyFilters()"><span>🌴 Caribe (otros)</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="region" data-val="indo" onchange="applyFilters()"><span>🌏 Indo-Pacífico</span></label>
+      <label class="fp-row"><input type="checkbox" checked data-filter="region" data-val="otro" onchange="applyFilters()"><span>🌍 Otras regiones</span></label>
+    </div>
+    <div class="fp-divider"></div>
+    <div class="fp-actions">
+      <button class="fp-act-btn" onclick="selectAllFilters()">Todo</button>
+      <button class="fp-act-btn" onclick="selectNoneFilters()">Ninguno</button>
+      <button class="fp-act-btn" onclick="selectCriticalOnly()">Críticos</button>
+    </div>
+    <div class="fp-count" id="fp-count">Mostrando 21 de 21 sitios</div>
+  </div>
+  <div id="compare-bar">
+    <span class="cb-lbl">COMPARAR:</span>
+    <div class="cb-tags" id="cb-tags"></div>
+    <button id="compare-go" onclick="openCompareTab()" disabled>📊 Ver comparación</button>
+    <button id="compare-clear" onclick="clearCompare()">✕</button>
+  </div>
+  <div id="timeline-wrap">
+    <div class="tl-header">
+      <span class="tl-title">TIMELINE DHW — ÚLTIMAS 12 SEMANAS</span>
+      <span class="tl-val" id="tl-week-label">HOY</span>
+      <button id="timeline-close" onclick="toggleTimeline()">✕</button>
+    </div>
+    <input type="range" id="timeline-slider" min="0" max="11" value="11" oninput="onTimelineChange(this.value)">
+    <div class="tl-labels"><span>S-11</span><span>S-8</span><span>S-4</span><span>HOY</span></div>
+  </div>
+</div>
+
+<aside id="sidebar">
+  <div id="stabs">
+    <button class="stab active" onclick="setTab('detail',this)">Detalle</button>
+    <button class="stab" onclick="setTab('regions',this)">Regiones</button>
+    <button class="stab" onclick="setTab('compare',this)">Comparar</button>
+    <button class="stab" onclick="setTab('dashboard',this)">Global</button>
+    <button class="stab" onclick="setTab('colombia',this)">🇨🇴 Colombia</button>
+    <button class="stab" onclick="setTab('forecast',this)">📈 Predicción</button>
+    <button class="stab" onclick="setTab('alerts',this)" id="alerts-tab">🔔 Alertas</button>
+  </div>
+  <div id="scontent">
+
+    <!-- DETAIL -->
+    <div id="tab-detail">
+      <div id="placeholder"><div class="ph-icon">🗺️</div><p>Haz clic en cualquier sitio del mapa para ver temperatura satelital, nivel de alerta y protocolo de respuesta.</p></div>
+      <div id="reef-detail">
+        <div class="d-name-row">
+          <div class="d-name" id="d-name"></div>
+          <button class="watch-btn" id="watch-btn" onclick="toggleWatch()" title="Activar alerta">🔔</button>
+        </div>
+        <div class="al-badge" id="d-badge"></div>
+        <!-- Risk index -->
+        <div class="risk-index">
+          <div class="ri-label">ÍNDICE DE RIESGO COMPUESTO</div>
+          <div class="ri-bar"><div class="ri-fill" id="ri-fill"></div></div>
+          <div class="ri-val" id="ri-val"></div>
+        </div>
+        <div class="mg">
+          <div class="mbox"><div class="ml">SST ANOMALÍA</div><div class="mv" id="d-sst"></div></div>
+          <div class="mbox"><div class="ml">DHW C-sem</div><div class="mv" id="d-dhw"></div></div>
+          <div class="mbox"><div class="ml">RIESGO</div><div class="mv sm" id="d-risk"></div></div>
+          <div class="mbox"><div class="ml">ACTUALIZADO</div><div class="mv sm" id="d-date"></div></div>
+        </div>
+        <div class="sensor-header">
+          <div class="dhw-lbl" style="margin:0;">SENSORES SATELITALES</div>
+          <button class="sp-compare-btn" id="add-compare-btn" onclick="addToCompare()" style="margin:0;">⚖️ + Comparar</button>
+        </div>
+        <div class="sp-grid" id="d-sensor-grid"></div>
+        <div class="sp-footer" id="d-sensor-footer"></div>
+        <!-- Sargazo impact indicator -->
+        <div id="sarg-panel" style="display:none;background:rgba(123,45,139,.1);border:1px solid rgba(123,45,139,.3);border-radius:8px;padding:9px 12px;margin-top:6px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:9px;font-family:var(--fd);font-weight:700;letter-spacing:.08em;color:#C47FD8;">🟤 SARGAZO — AFAI</span>
+            <span id="sarg-badge" style="font-size:10px;font-family:var(--fd);font-weight:700;"></span>
+          </div>
+          <div style="height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;margin-bottom:6px;">
+            <div id="sarg-bar" style="height:100%;border-radius:3px;background:#7B2D8B;transition:width .5s;"></div>
+          </div>
+          <div id="sarg-impact" style="font-size:11px;color:var(--t2);line-height:1.6;"></div>
+        </div>
+        <div class="divline"></div>
+        <div class="chart-wrap">
+          <div class="chart-title">TENDENCIA DHW — 12 SEMANAS</div>
+          <div class="chart-canvas-wrap"><canvas id="dhw-chart"></canvas></div>
+        </div>
+        <!-- Temperature comparison chart -->
+        <div class="chart-wrap">
+          <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>TEMPERATURA: NORMAL vs ACTUAL (°C)</span>
+            <span id="temp-delta" style="font-size:10px;font-weight:700;"></span>
+          </div>
+          <div class="chart-canvas-wrap"><canvas id="temp-chart"></canvas></div>
+          <div id="temp-legend" style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--t3);">
+            <span><span style="display:inline-block;width:10px;height:3px;background:#378ADD;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>Normal histórica</span>
+            <span><span style="display:inline-block;width:10px;height:3px;background:#E24B4A;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>Actual (GOES-16)</span>
+            <span><span style="display:inline-block;width:10px;height:3px;background:rgba(226,75,74,.2);border-radius:2px;vertical-align:middle;margin-right:4px;"></span>Zona de estrés</span>
+          </div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div class="dhw-lbl">GRADO-SEMANAS ACUMULADAS</div>
+          <div class="dhw-track"><div class="dhw-fill" id="d-dhwbar"></div></div>
+          <div class="th-pills">
+            <span class="th-p" style="background:rgba(29,158,117,.15);color:#1D9E75;">0-4 Vigilancia</span>
+            <span class="th-p" style="background:rgba(239,159,39,.15);color:#EF9F27;">4-8 Alerta 1</span>
+            <span class="th-p" style="background:rgba(216,90,48,.15);color:#D85A30;">8-12 Alerta 2</span>
+            <span class="th-p" style="background:rgba(163,45,45,.15);color:#E24B4A;">12+ Alerta 3-4</span>
+          </div>
+        </div>
+        <div class="divline"></div>
+        <div class="act-lbl">RESPUESTA RECOMENDADA</div>
+        <div class="act-txt" id="d-action"></div>
+        <button class="d-btn" id="d-btn">Ver protocolo NOAA CRW completo ↗</button>
+        <button class="export-btn" id="export-btn" onclick="exportReport()">📄 Exportar reporte PDF</button>
+        <button class="export-btn" onclick="shareReef()" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25D366;">📲 Compartir por WhatsApp</button>
+      </div>
+    </div>
+
+    <!-- REGIONS -->
+    <div id="tab-regions" style="display:none;"><div class="rlist" id="rlist"></div></div>
+
+    <!-- COMPARE -->
+    <div id="tab-compare">
+      <div class="cmp-header">COMPARACIÓN DE ARRECIFES</div>
+      <div id="cmp-content"><div class="cmp-empty">Selecciona sitios en el mapa y presiona "+ Comparar"</div></div>
+      <div class="corr-wrap" id="corr-wrap" style="display:none;">
+        <div class="chart-title">CORRELACIÓN SST vs DHW</div>
+        <div class="chart-canvas-wrap"><canvas id="corr-chart"></canvas></div>
+      </div>
+      <button id="clear-compare" onclick="clearCompare()" style="display:none;">Limpiar comparación</button>
+    </div>
+
+    <!-- GLOBAL DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="dash-section">
+        <div class="dash-lbl">RESUMEN GLOBAL</div>
+        <div class="dash-kpis" id="dash-kpis"></div>
+      </div>
+      <div class="dash-section">
+        <div class="dash-lbl">DISTRIBUCIÓN DE ALERTAS</div>
+        <div class="alert-dist" id="alert-dist"></div>
+        <div class="chart-wrap"><div class="chart-title">DHW PROMEDIO POR REGIÓN</div><div class="chart-canvas-wrap"><canvas id="dash-chart"></canvas></div></div>
+      </div>
+      <div class="dash-section">
+        <div class="dash-lbl">CORRELACIÓN GLOBAL: SST vs DHW</div>
+        <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:130px;"><canvas id="global-corr-chart"></canvas></div></div>
+      </div>
+      <div class="dash-section">
+        <div class="dash-lbl">TOP 5 — MAYOR ESTRÉS TÉRMICO</div>
+        <div class="top-list" id="top-list"></div>
+      </div>
+    </div>
+
+    <!-- COLOMBIA -->
+    <div id="tab-colombia">
+      <div class="co-header"><div class="co-flag">🇨🇴</div><div><div class="co-title">PANEL COLOMBIA</div><div class="co-sub">Caribe colombiano · INVEMAR · Parques Nacionales</div></div></div>
+      <div class="co-sites" id="co-sites"></div>
+      <button class="co-report-btn" onclick="exportColombiaReport()">📄 Generar reporte INVEMAR</button>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="font-family:var(--fd);font-size:9px;color:var(--t3);letter-spacing:.08em;margin-bottom:4px;">CONTACTOS DE RESPUESTA</div>
+        <div class="gcard" style="padding:8px 11px;"><div class="gico" style="font-size:14px;">🔬</div><div><div class="gtitle" style="font-size:11px;">INVEMAR</div><div class="gdesc" style="font-size:10px;">Instituto de Investigaciones Marinas · Santa Marta</div></div></div>
+        <div class="gcard" style="padding:8px 11px;"><div class="gico" style="font-size:14px;">🏛️</div><div><div class="gtitle" style="font-size:11px;">Parques Nacionales Naturales</div><div class="gdesc" style="font-size:10px;">PNN Corales del Rosario · PNN Tayrona · Seaflower</div></div></div>
+        <div class="gcard" style="padding:8px 11px;"><div class="gico" style="font-size:14px;">🌿</div><div><div class="gtitle" style="font-size:11px;">CORALINA · CORPOURABA</div><div class="gdesc" style="font-size:10px;">San Andrés y Providencia · Golfo de Urabá</div></div></div>
+      </div>
+    </div>
+
+    <!-- PREDICCIÓN -->
+    <div id="tab-forecast">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-family:var(--fd);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--t3);">MODELO PREDICTIVO — 4 SEMANAS</div>
+        <button onclick="buildForecast()" style="background:rgba(29,158,117,.12);border:1px solid rgba(29,158,117,.3);border-radius:5px;color:var(--green);font-size:10px;padding:3px 9px;cursor:pointer;font-family:var(--fd);">↻ Recalcular</button>
+      </div>
+      <!-- Model explanation badge -->
+      <div style="background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:10px;color:var(--t3);line-height:1.6;">
+        Proyección basada en tendencia DHW (12 sem), SST anomalía, clorofila, viento, turbidez y sargazo. Método: regresión ponderada + factores de mitigación/agravamiento. Fuente: NOAA CRW methodology.
+      </div>
+      <!-- Global forecast summary -->
+      <div style="font-family:var(--fd);font-size:9px;color:var(--t3);letter-spacing:.08em;margin-bottom:8px;">RESUMEN GLOBAL — PRÓXIMAS 4 SEMANAS</div>
+      <div id="fc-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;"></div>
+      <!-- DHW projection chart global -->
+      <div class="chart-wrap" style="margin-bottom:14px;">
+        <div class="chart-title">PROYECCIÓN DHW GLOBAL — TOP 8 SITIOS (C-sem)</div>
+        <div class="chart-canvas-wrap" style="height:140px;"><canvas id="fc-global-chart"></canvas></div>
+      </div>
+      <!-- Per-reef forecast list -->
+      <div style="font-family:var(--fd);font-size:9px;color:var(--t3);letter-spacing:.08em;margin-bottom:8px;">RANKING POR RIESGO PROYECTADO</div>
+      <div id="fc-list"></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="tab-alerts">
+      <div style="font-family:var(--fd);font-size:9px;color:var(--t3);letter-spacing:.08em;margin-bottom:8px;">SITIOS EN VIGILANCIA</div>
+      <div id="watch-list-el"></div>
+      <div style="font-family:var(--fd);font-size:9px;color:var(--t3);letter-spacing:.08em;margin:12px 0 8px;">NOTIFICACIONES RECIENTES</div>
+      <div id="alerts-list"><div class="al-empty">Activa la vigilancia en sitios individuales con 🔔 para recibir notificaciones cuando suben de alerta.</div></div>
+    </div>
+
+  </div>
+</aside>
+</div>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════
+var currentLayer  = 'alert';
+var currentReef   = null;
+var circleMarkers = [];
+var pulseRings    = [];
+var markerVisible = [];
+var compareList   = [];
+var watchList     = [];    // ids of watched reefs
+var alertHistory  = [];    // notification log
+var dhwChart      = null;
+var tempChart     = null;
+var dashChart     = null;
+var corrChart     = null;
+var globalCorrChart = null;
+var globalFcChart = null;
+var heatLayer     = null;
+var heatmapOn     = false;
+var fullscreenOn  = false;
+var timelineOn    = false;
+var timerSeconds  = 86400;
+var LAYER_TO_SD   = {sst:'sst',dhw:'dhw',sla:'sla',wind:'wind',chl:'chl',turb:'turb',co2:'co2',uv:'uv',rain:'rain',habitat:'hab',bathy:'bathy',sarg:'afai',alert:null};
+
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+var REEFS = [
+  {id:0,  name:"Great Barrier Reef (Norte)",      lat:-14.7, lng:145.5,  al:4, sst:2.8, dhw:14.2, chl:3.1, turb:0.8, co2:422, uv:11, rain:4.2, sla:12, wind:4.1, hab:"Coral duro",   bathy:8,  afai:0.01, sstBase:26.5, sstActual:29.3, risk:"Mortalidad severa",    date:"24 Mar 2026", action:"Rescate de coral de emergencia y criopreservación inmediata. Suspender buceo recreativo. Activar encuestas aéreas."},
+  {id:1,  name:"Great Barrier Reef (Central)",    lat:-18.3, lng:147.2,  al:4, sst:2.5, dhw:12.8, chl:2.8, turb:0.7, co2:421, uv:10, rain:5.1, sla:10, wind:3.8, hab:"Coral+algas",  bathy:12, afai:0.02, sstBase:25.8, sstActual:28.3, risk:"Mortalidad severa",    date:"24 Mar 2026", action:"Blanqueamiento masivo confirmado. Encuestas aéreas en curso. Rescate de fragmentos coralinos activo."},
+  {id:2,  name:"Great Barrier Reef (Sur)",        lat:-23.1, lng:152.1,  al:3, sst:1.9, dhw:10.1, chl:2.1, turb:0.5, co2:420, uv:9,  rain:3.8, sla:8,  wind:5.2, hab:"Coral duro",   bathy:15, afai:0.01, sstBase:23.9, sstActual:25.8, risk:"Blanqueamiento masivo", date:"24 Mar 2026", action:"Viveros coralinos trasladados a mayor profundidad. Operadores turísticos informados."},
+  {id:3,  name:"Torres Strait",                   lat:-9.9,  lng:142.2,  al:3, sst:1.7, dhw:9.4,  chl:1.9, turb:0.6, co2:420, uv:12, rain:6.3, sla:7,  wind:4.5, hab:"Coral duro",   bathy:6,  afai:0.03, sstBase:28.1, sstActual:29.8, risk:"Blanqueamiento masivo", date:"24 Mar 2026", action:"Equipos indígenas de guardabosques activados. Autoridades pesqueras alertadas."},
+  {id:4,  name:"Coral Sea",                       lat:-19.5, lng:155.0,  al:3, sst:2.1, dhw:11.3, chl:1.5, turb:0.3, co2:419, uv:10, rain:2.9, sla:11, wind:6.1, hab:"Coral duro",   bathy:20, afai:0.01, sstBase:26.2, sstActual:28.3, risk:"Blanqueamiento masivo", date:"24 Mar 2026", action:"Teledetección activa. Equipos de evaluación rápida desplegados."},
+  {id:5,  name:"Caribe — Florida Keys",           lat:24.7,  lng:-81.4,  al:2, sst:1.4, dhw:7.1,  chl:1.2, turb:0.4, co2:421, uv:8,  rain:1.8, sla:5,  wind:5.8, hab:"Coral+algas",  bathy:10, afai:0.18, sstBase:26.8, sstActual:28.2, risk:"Blanqueamiento probable",date:"23 Mar 2026", action:"NOAA Mission Iconic Reefs en alerta. Pantallas de sombra desplegadas. Viveros reubicados."},
+  {id:6,  name:"Caribe — Puerto Rico",            lat:18.2,  lng:-66.5,  al:2, sst:1.2, dhw:6.3,  chl:1.1, turb:0.5, co2:420, uv:9,  rain:2.2, sla:4,  wind:6.2, hab:"Coral duro",   bathy:12, afai:0.14, sstBase:27.3, sstActual:28.5, risk:"Blanqueamiento probable",date:"23 Mar 2026", action:"Alertas emitidas a operadores turísticos y pesqueros. Viveros inventariados."},
+  {id:7,  name:"Mar Rojo (Sur)",                  lat:16.5,  lng:42.5,   al:2, sst:1.3, dhw:6.8,  chl:0.9, turb:0.3, co2:421, uv:13, rain:0.4, sla:3,  wind:4.9, hab:"Coral duro",   bathy:18, afai:0.02, sstBase:28.4, sstActual:29.7, risk:"Blanqueamiento probable",date:"23 Mar 2026", action:"Blanqueamiento observado en zonas someras. Inmersiones de vigilancia aceleradas."},
+  {id:8,  name:"Arrecife Mesoamericano",          lat:17.5,  lng:-87.6,  al:1, sst:0.9, dhw:4.8,  chl:0.8, turb:0.4, co2:420, uv:9,  rain:2.1, sla:2,  wind:5.5, hab:"Coral duro",   bathy:14, afai:0.22, sstBase:27.6, sstActual:28.5, risk:"Blanqueamiento posible", date:"23 Mar 2026", action:"Frecuencia de monitoreo aumentada. Planes de manejo regional revisados."},
+  {id:9,  name:"Islas Hawaii",                    lat:21.3,  lng:-157.8, al:1, sst:0.7, dhw:3.9,  chl:0.5, turb:0.2, co2:421, uv:8,  rain:1.4, sla:1,  wind:7.1, hab:"Coral duro",   bathy:16, afai:0.01, sstBase:25.9, sstActual:26.6, risk:"Blanqueamiento posible", date:"22 Mar 2026", action:"Estado de vigilancia. Boyas activas. Pronósticos semanales distribuidos."},
+  {id:10, name:"Mar Rojo (Norte)",                lat:27.2,  lng:34.4,   al:1, sst:0.8, dhw:4.2,  chl:0.7, turb:0.2, co2:420, uv:11, rain:0.2, sla:2,  wind:5.3, hab:"Coral duro",   bathy:22, afai:0.01, sstBase:24.7, sstActual:25.5, risk:"Blanqueamiento posible", date:"23 Mar 2026", action:"Alerta emitida a autoridades regionales. Buques de investigación en alerta."},
+  {id:11, name:"Maldivas",                        lat:3.2,   lng:73.2,   al:1, sst:0.6, dhw:3.1,  chl:0.4, turb:0.2, co2:420, uv:10, rain:1.9, sla:1,  wind:4.2, hab:"Coral duro",   bathy:8,  afai:0.01, sstBase:29.1, sstActual:29.7, risk:"Blanqueamiento posible", date:"22 Mar 2026", action:"Vigilancia activa. Operadores turísticos informados."},
+  {id:12, name:"Triángulo Coral — Indonesia",     lat:-2.5,  lng:131.2,  al:1, sst:0.5, dhw:2.8,  chl:0.6, turb:0.3, co2:420, uv:10, rain:4.8, sla:1,  wind:3.9, hab:"Coral+algas",  bathy:10, afai:0.03, sstBase:29.3, sstActual:29.8, risk:"Blanqueamiento posible", date:"22 Mar 2026", action:"Vigilancia regional. Redes de monitoreo en alerta."},
+  {id:13, name:"Archipiélago Chagos",             lat:-6.3,  lng:71.5,   al:0, sst:0.2, dhw:0.9,  chl:0.2, turb:0.1, co2:419, uv:9,  rain:1.2, sla:0,  wind:4.8, hab:"Coral duro",   bathy:25, afai:0.01, sstBase:28.8, sstActual:29.0, risk:"Bajo",                  date:"22 Mar 2026", action:"Sin acción requerida. Continuar monitoreo satelital rutinario."},
+  {id:14, name:"Triángulo Coral — Filipinas",     lat:9.8,   lng:124.6,  al:0, sst:0.1, dhw:0.7,  chl:0.5, turb:0.3, co2:419, uv:10, rain:3.1, sla:0,  wind:4.1, hab:"Coral duro",   bathy:12, afai:0.02, sstBase:29.4, sstActual:29.5, risk:"Bajo",                  date:"22 Mar 2026", action:"Sin blanqueamiento activo. Monitoreo preventivo continúa."},
+  {id:15, name:"Nueva Caledonia",                 lat:-21.5, lng:165.5,  al:0, sst:0.3, dhw:1.4,  chl:0.3, turb:0.2, co2:419, uv:8,  rain:1.6, sla:0,  wind:5.1, hab:"Coral duro",   bathy:18, afai:0.01, sstBase:24.2, sstActual:24.5, risk:"Bajo",                  date:"22 Mar 2026", action:"Sin acción requerida. Condiciones nominales."},
+  {id:16, name:"[CO] Islas del Rosario",          lat:10.17, lng:-75.77, al:2, sst:1.3, dhw:6.9,  chl:1.4, turb:0.7, co2:421, uv:10, rain:2.8, sla:4,  wind:5.2, hab:"Coral duro",   bathy:9,  afai:0.29, sstBase:27.8, sstActual:29.1, risk:"Blanqueamiento probable",date:"24 Mar 2026", action:"Alerta emitida a INVEMAR y Parques Nacionales. Suspender buceo recreativo. Intensificar monitoreo PNN Corales del Rosario."},
+  {id:17, name:"[CO] San Andrés",                 lat:12.55, lng:-81.72, al:2, sst:1.5, dhw:7.4,  chl:1.1, turb:0.4, co2:421, uv:11, rain:1.9, sla:5,  wind:6.1, hab:"Coral+algas",  bathy:11, afai:0.21, sstBase:28.1, sstActual:29.6, risk:"Blanqueamiento probable",date:"24 Mar 2026", action:"Coordinar con Coralina y Reserva Seaflower. Activar red comunitaria. Reducir presión de pesca y turismo."},
+  {id:18, name:"[CO] Isla Providencia",           lat:13.35, lng:-81.38, al:1, sst:0.9, dhw:4.1,  chl:0.8, turb:0.3, co2:420, uv:10, rain:1.5, sla:2,  wind:5.8, hab:"Coral duro",   bathy:13, afai:0.09, sstBase:27.9, sstActual:28.8, risk:"Blanqueamiento posible", date:"23 Mar 2026", action:"Vigilancia activa. Monitorear temperatura in situ. Reforzar restricciones de anclaje."},
+  {id:19, name:"[CO] PNN Tayrona",                lat:11.33, lng:-74.03, al:1, sst:0.8, dhw:3.5,  chl:1.6, turb:0.9, co2:421, uv:9,  rain:3.4, sla:2,  wind:4.4, hab:"Coral+algas",  bathy:7,  afai:0.16, sstBase:27.5, sstActual:28.3, risk:"Blanqueamiento posible", date:"23 Mar 2026", action:"Aumentar monitoreo en bahías Chengue y Gayraca. Alertar guías de ecoturismo."},
+  {id:20, name:"[CO] Golfo de Urabá",             lat:8.35,  lng:-76.85, al:1, sst:0.6, dhw:2.8,  chl:3.8, turb:2.1, co2:421, uv:9,  rain:6.2, sla:1,  wind:3.6, hab:"Fragmentado",  bathy:5,  afai:0.07, sstBase:27.2, sstActual:27.8, risk:"Blanqueamiento posible", date:"22 Mar 2026", action:"Vigilancia preventiva. Alta turbidez por sedimentación del río Atrato. Coordinar con CORPOURABA."},
+  {id:21, name:"[CO] Isla Fuerte",                lat:9.38,  lng:-76.19, al:2, sst:1.4, dhw:6.1,  chl:1.3, turb:0.6, co2:421, uv:10, rain:3.1, sla:3,  wind:4.8, hab:"Coral duro",   bathy:8,  afai:0.19, sstBase:27.6, sstActual:29.0, risk:"Blanqueamiento probable",date:"24 Mar 2026", action:"Activar monitoreo con INVEMAR. Isla Fuerte alberga uno de los arrecifes más biodiversos del Caribe colombiano. Restringir buceo recreativo en zonas de coral masivo. Coordinar con autoridades de Bolívar."},
+  {id:22, name:"[CO] Reserva SanGuare",           lat:9.70,  lng:-75.62, al:1, sst:0.7, dhw:3.2,  chl:1.0, turb:0.5, co2:420, uv:9,  rain:3.5, sla:1,  wind:4.6, hab:"Coral duro",   bathy:7,  afai:0.11, sstBase:27.4, sstActual:28.1, risk:"Blanqueamiento posible", date:"24 Mar 2026", action:"Vigilancia activa en Reserva SanGuare. Coordinar con comunidades locales y autoridades ambientales. Mantener monitoreo in situ y reforzar restricciones de acceso en zonas coralinas sensibles."}
+];
+
+var REEF_REGION = {0:'gbr',1:'gbr',2:'gbr',3:'gbr',4:'gbr',5:'caribe',6:'caribe',7:'otro',8:'caribe',9:'otro',10:'otro',11:'indo',12:'indo',13:'otro',14:'indo',15:'indo',16:'co',17:'co',18:'co',19:'co',20:'co',21:'co',22:'co'};
+var CO_IDS = [16,17,18,19,20,21,22];
+var CO_AGENCIES = {16:['INVEMAR','PNN Corales del Rosario'],17:['CORALINA','Reserva Seaflower'],18:['CORALINA','PNN Old Providence'],19:['INVEMAR','PNN Tayrona'],20:['CORPOURABA','INVEMAR'],21:['INVEMAR','Gobernación de Bolívar'],22:['INVEMAR','Reserva SanGuare']};
+var AC   = ['#1D9E75','#EF9F27','#D85A30','#E24B4A','#A32D2D'];
+var AL   = ['Sin Estrés','Alerta 1 — Blanqueamiento Posible','Alerta 2 — Blanqueamiento Probable','Alerta 3 — Blanqueamiento Masivo','Alerta 4 — Mortalidad Severa'];
+var AS   = ['Sin Estrés','Alerta 1','Alerta 2','Alerta 3','Alerta 4'];
+var TABS = ['detail','regions','compare','dashboard','colombia','forecast','alerts'];
+
+// Generate 12-week DHW trend
+REEFS.forEach(function(r){
+  var vals=[], end=r.dhw;
+  for(var i=0;i<12;i++){
+    var frac=i/11, noise=(Math.random()-.5)*1.0;
+    vals.push(Math.max(0,parseFloat((end*Math.pow(frac,0.75)+noise).toFixed(1))));
+  }
+  vals[11]=end; r.trend=vals;
+});
+
+// Compute composite risk index 0-100 (SST 30%, DHW 30%, Chl 12%, Turb 12%, Sargazo 16%)
+function riskIndex(r){
+  var s = (r.sst/3)*30 + (r.dhw/16)*30 + (r.chl/4)*12 + (r.turb/2)*12 + (r.afai/0.3)*16;
+  return Math.min(100,Math.round(s));
+}
+
+// ══════════════════════════════════════════
+//  LAYER DEFINITIONS
+// ══════════════════════════════════════════
+var LY = {
+  alert:  {title:'ALERTA NOAA CRW',        sensor:'GOES-16/17 + CoralTemp v3.1 — NOAA',      leg:[{c:'#1D9E75',l:'Sin Estrés'},{c:'#EF9F27',l:'Alerta 1 (4-8)'},{c:'#D85A30',l:'Alerta 2 (8-12)'},{c:'#E24B4A',l:'Alerta 3 (12-16)'},{c:'#A32D2D',l:'Alerta 4 (16+)'}], color:function(r){return AC[Math.min(r.al,4)];}, desc:function(r){return 'Alerta '+r.al;}},
+  sst:    {title:'SST ANOMALÍA (°C)',       sensor:'GOES-16/17 + Sentinel-3 — NOAA/ESA',      leg:[{c:'#1D9E75',l:'≤0.5°C'},{c:'#EF9F27',l:'0.5-1°C'},{c:'#D85A30',l:'1-2°C'},{c:'#A32D2D',l:'>2°C'}],        color:function(r){return r.sst<=.5?'#1D9E75':r.sst<=1?'#EF9F27':r.sst<=2?'#D85A30':'#A32D2D';}, desc:function(r){return '+'+r.sst.toFixed(1)+'°C';}},
+  dhw:    {title:'GRADO-SEMANAS',           sensor:'CoralTemp v3.1 — NOAA CRW',               leg:[{c:'#1D9E75',l:'<4 C-sem'},{c:'#EF9F27',l:'4-8'},{c:'#D85A30',l:'8-12'},{c:'#A32D2D',l:'>12'}],              color:function(r){return r.dhw<4?'#1D9E75':r.dhw<8?'#EF9F27':r.dhw<12?'#D85A30':'#A32D2D';}, desc:function(r){return r.dhw.toFixed(1)+' Csem';}},
+  sla:    {title:'NIVEL DEL MAR (cm)',      sensor:'Jason-3 / Sentinel-6 — NOAA/ESA',          leg:[{c:'#1D9E75',l:'≤2cm'},{c:'#EF9F27',l:'2-6cm'},{c:'#D85A30',l:'6-10cm'},{c:'#185FA5',l:'>10cm'}],            color:function(r){return r.sla<=2?'#1D9E75':r.sla<=6?'#EF9F27':r.sla<=10?'#D85A30':'#185FA5';}, desc:function(r){return '+'+r.sla+' cm';}},
+  wind:   {title:'VIENTO SUPERFICIAL (m/s)',sensor:'CYGNSS — NASA',                            leg:[{c:'#185FA5',l:'<4 calma'},{c:'#1D9E75',l:'4-6 mod.'},{c:'#EF9F27',l:'6-8 fuerte'},{c:'#A32D2D',l:'>8 intenso'}], color:function(r){return r.wind<4?'#185FA5':r.wind<6?'#1D9E75':r.wind<8?'#EF9F27':'#A32D2D';}, desc:function(r){return r.wind.toFixed(1)+' m/s';}},
+  chl:    {title:'CLOROFILA-A (mg/m³)',     sensor:'VIIRS / Suomi NPP — NOAA',                 leg:[{c:'#1D9E75',l:'<0.5'},{c:'#EF9F27',l:'0.5-1.5'},{c:'#D85A30',l:'1.5-3'},{c:'#A32D2D',l:'>3'}],              color:function(r){return r.chl<.5?'#1D9E75':r.chl<1.5?'#EF9F27':r.chl<3?'#D85A30':'#A32D2D';}, desc:function(r){return r.chl.toFixed(1)+' mg/m³';}},
+  turb:   {title:'TURBIDEZ Kd490 (m⁻¹)',   sensor:'Sentinel-2 / VIIRS — ESA/NOAA',             leg:[{c:'#1D9E75',l:'<0.3 clara'},{c:'#EF9F27',l:'0.3-0.6'},{c:'#D85A30',l:'0.6-1'},{c:'#A32D2D',l:'>1'}],        color:function(r){return r.turb<.3?'#1D9E75':r.turb<.6?'#EF9F27':r.turb<1?'#D85A30':'#A32D2D';}, desc:function(r){return r.turb.toFixed(1)+' m⁻¹';}},
+  co2:    {title:'CO2 ATMOSFÉRICO (ppm)',   sensor:'OCO-2 / OCO-3 — NASA',                     leg:[{c:'#1D9E75',l:'<415'},{c:'#EF9F27',l:'415-420'},{c:'#D85A30',l:'420-422'},{c:'#A32D2D',l:'>422'}],            color:function(r){return r.co2<415?'#1D9E75':r.co2<420?'#EF9F27':r.co2<422?'#D85A30':'#A32D2D';}, desc:function(r){return r.co2+' ppm';}},
+  uv:     {title:'ÍNDICE UV',               sensor:'Aura/OMI + TROPOMI — NASA/ESA',             leg:[{c:'#1D9E75',l:'0-5 bajo'},{c:'#EF9F27',l:'6-7 mod.'},{c:'#D85A30',l:'8-10 alto'},{c:'#A32D2D',l:'11+ muy alto'}], color:function(r){return r.uv<=5?'#1D9E75':r.uv<=7?'#EF9F27':r.uv<=10?'#D85A30':'#A32D2D';}, desc:function(r){return 'UV '+r.uv;}},
+  rain:   {title:'PRECIPITACIÓN (mm/h)',    sensor:'GPM / IMERG — NASA',                        leg:[{c:'#1D9E75',l:'<2 seco'},{c:'#00C9B1',l:'2-4 mod.'},{c:'#EF9F27',l:'4-6 intensa'},{c:'#A32D2D',l:'>6 muy intensa'}], color:function(r){return r.rain<2?'#1D9E75':r.rain<4?'#00C9B1':r.rain<6?'#EF9F27':'#A32D2D';}, desc:function(r){return r.rain.toFixed(1)+' mm/h';}},
+  habitat:{title:'TIPO DE HÁBITAT',         sensor:'Planet Dove / Allen Coral Atlas',            leg:[{c:'#1D9E75',l:'Coral duro'},{c:'#EF9F27',l:'Coral+algas'},{c:'#F0E040',l:'Arena'},{c:'#A32D2D',l:'Fragmentado'}], color:function(r){return r.hab==='Fragmentado'?'#A32D2D':r.hab==='Coral+algas'?'#EF9F27':r.hab==='Arena'?'#F0E040':'#1D9E75';}, desc:function(r){return r.hab;}},
+  bathy:  {title:'BATIMETRÍA (m)',          sensor:'ICESat-2 / ATLAS — NASA',                   leg:[{c:'#1D9E75',l:'<8m'},{c:'#EF9F27',l:'8-15m'},{c:'#185FA5',l:'15-22m'},{c:'#534AB7',l:'>22m'}],                color:function(r){return r.bathy<8?'#1D9E75':r.bathy<15?'#EF9F27':r.bathy<22?'#185FA5':'#534AB7';}, desc:function(r){return r.bathy+'m';}},
+  sarg:   {title:'SARGAZO — ÍNDICE AFAI',   sensor:'MODIS/Aqua + VIIRS/Suomi NPP — NASA/NOAA',  leg:[{c:'#1D9E75',l:'Ausente (<0.02)'},{c:'#C8E600',l:'Disperso (0.02-0.05)'},{c:'#E8A800',l:'Moderado (0.05-0.12)'},{c:'#D85A30',l:'Denso (0.12-0.25)'},{c:'#7B2D8B',l:'Bloom (>0.25)'}], color:function(r){return r.afai<0.02?'#1D9E75':r.afai<0.05?'#C8E600':r.afai<0.12?'#E8A800':r.afai<0.25?'#D85A30':'#7B2D8B';}, desc:function(r){return 'AFAI '+r.afai.toFixed(2);}}
+};
+
+var SD = [
+  {label:'SST',        key:'sst',  fn:function(r){return '+'+r.sst.toFixed(1)+'°C';},  c:'#E24B4A', icon:'🌡️'},
+  {label:'DHW',        key:'dhw',  fn:function(r){return r.dhw.toFixed(1)+' Csem';},   c:'#D85A30', icon:'🔥'},
+  {label:'Clorofila',  key:'chl',  fn:function(r){return r.chl.toFixed(1)+' mg/m³';},  c:'#3B6D11', icon:'🔬'},
+  {label:'Turbidez',   key:'turb', fn:function(r){return r.turb.toFixed(1)+' m⁻¹';},   c:'#639922', icon:'💧'},
+  {label:'CO2',        key:'co2',  fn:function(r){return r.co2+' ppm';},               c:'#854F0B', icon:'☁️'},
+  {label:'UV',         key:'uv',   fn:function(r){return 'UV '+r.uv;},                 c:'#BA7517', icon:'☀️'},
+  {label:'Lluvia',     key:'rain', fn:function(r){return r.rain.toFixed(1)+' mm/h';},  c:'#00C9B1', icon:'🌧️'},
+  {label:'Nivel Mar',  key:'sla',  fn:function(r){return '+'+r.sla+' cm';},            c:'#378ADD', icon:'🌊'},
+  {label:'Viento',     key:'wind', fn:function(r){return r.wind.toFixed(1)+' m/s';},   c:'#8aaec8', icon:'💨'},
+  {label:'Hábitat',    key:'hab',  fn:function(r){return r.hab;},                      c:'#7F77DD', icon:'🪸'},
+  {label:'Batimetría', key:'bathy',fn:function(r){return r.bathy+'m';},                c:'#534AB7', icon:'📐'},
+  {label:'Sargazo',    key:'afai', fn:function(r){
+    var v=r.afai;
+    var lbl=v<0.02?'Ausente':v<0.05?'Disperso':v<0.12?'Moderado':v<0.25?'Denso':'Bloom';
+    return 'AFAI '+v.toFixed(2)+' · '+lbl;
+  }, c:'#7B2D8B', icon:'🟤'}
+];
+
+// ══════════════════════════════════════════
+//  MAP
+// ══════════════════════════════════════════
+var map = L.map('map',{zoomControl:false,attributionControl:true}).setView([12,-20],3);
+L.control.zoom({position:'bottomright'}).addTo(map);
+var satT = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['0','1','2','3'],attribution:'© Google',maxZoom:21});
+var hybT = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{subdomains:['0','1','2','3'],attribution:'© Google',maxZoom:21});
+satT.addTo(map);
+
+function setBase(b,btn){
+  document.querySelectorAll('.base-btn').forEach(function(e){e.classList.remove('active');});
+  btn.classList.add('active');
+  if(b==='satellite'){map.removeLayer(hybT);satT.addTo(map);}
+  else{map.removeLayer(satT);hybT.addTo(map);}
+}
+
+// ── FULLSCREEN ──
+function toggleFullscreen(){
+  fullscreenOn=!fullscreenOn;
+  document.getElementById('layout').classList.toggle('fullscreen',fullscreenOn);
+  document.getElementById('fs-btn').classList.toggle('active',fullscreenOn);
+  setTimeout(function(){map.invalidateSize();},300);
+}
+
+// ── HEATMAP ──
+function buildHeatData(weekIdx){
+  if(weekIdx===undefined) weekIdx=11;
+  return REEFS.map(function(r){
+    var dhwVal = (weekIdx===11)?r.dhw:r.trend[weekIdx];
+    return [r.lat,r.lng, Math.min(1, dhwVal/16)];
+  });
+}
+function toggleHeatmap(){
+  heatmapOn=!heatmapOn;
+  var btn=document.getElementById('heatmap-toggle');
+  btn.classList.toggle('on',heatmapOn);
+  if(heatmapOn){
+    heatLayer=L.heatLayer(buildHeatData(),{radius:45,blur:35,maxZoom:7,gradient:{0:'#1D9E75',.4:'#EF9F27',.7:'#D85A30',1:'#A32D2D'}}).addTo(map);
+  } else {
+    if(heatLayer){map.removeLayer(heatLayer);heatLayer=null;}
+  }
+}
+
+// ── TIMELINE ──
+function toggleTimeline(){
+  timelineOn=!timelineOn;
+  document.getElementById('timeline-wrap').classList.toggle('show',timelineOn);
+  document.getElementById('tl-btn').classList.toggle('active',timelineOn);
+  if(!timelineOn){
+    document.getElementById('timeline-slider').value=11;
+    onTimelineChange(11);
+  }
+}
+var WEEK_LABELS=['S-11','S-10','S-9','S-8','S-7','S-6','S-5','S-4','S-3','S-2','S-1','HOY'];
+function onTimelineChange(val){
+  val=parseInt(val);
+  document.getElementById('tl-week-label').textContent=WEEK_LABELS[val];
+  // Update marker colors using trend DHW at that week
+  circleMarkers.forEach(function(m,i){
+    var r=REEFS[i];
+    var dhwAtWeek=r.trend[val];
+    var c=dhwAtWeek<4?'#1D9E75':dhwAtWeek<8?'#EF9F27':dhwAtWeek<12?'#D85A30':'#A32D2D';
+    m.setStyle({fillColor:c,color:c});
+  });
+  if(heatmapOn&&heatLayer){
+    map.removeLayer(heatLayer);
+    heatLayer=L.heatLayer(buildHeatData(val),{radius:45,blur:35,maxZoom:7,gradient:{0:'#1D9E75',.4:'#EF9F27',.7:'#D85A30',1:'#A32D2D'}}).addTo(map);
+  }
+}
+
+// ── LEGEND ──
+function buildLegend(){
+  var ld=LY[currentLayer];
+  document.getElementById('leg-title').textContent=ld.title;
+  document.getElementById('leg-body').innerHTML=ld.leg.map(function(i){
+    return '<div class="leg-row"><div class="leg-dot" style="background:'+i.c+';"></div><span>'+i.l+'</span></div>';
+  }).join('');
+}
+
+// ── SENSOR GRID ──
+function renderSensorGrid(r){
+  var activeKey=LAYER_TO_SD[currentLayer];
+  document.getElementById('d-sensor-grid').innerHTML=SD.map(function(s){
+    var active=s.key===activeKey;
+    return '<div class="sp-cell'+(active?' active':'')+'">'
+      +'<div class="sp-cell-lbl">'+s.icon+' '+s.label+'</div>'
+      +'<div class="sp-cell-val" style="color:'+s.c+';">'+s.fn(r)+'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('d-sensor-footer').textContent=r.date+' · '+r.risk;
+}
+
+// ── SARGAZO PANEL ──
+var SARG_LEVELS = [
+  {max:0.02, label:'Ausente',   color:'#1D9E75', impact:'Sin presencia detectada. Condiciones costeras normales.'},
+  {max:0.05, label:'Disperso',  color:'#C8E600', impact:'Manchas aisladas. Impacto turístico y pesquero bajo. Monitoreo preventivo.'},
+  {max:0.12, label:'Moderado',  color:'#E8A800', impact:'Franjas visibles desde costa. Posible acumulación en playas. Activar limpieza preventiva.'},
+  {max:0.25, label:'Denso',     color:'#D85A30', impact:'Bloom activo. Afecta playas y arrecifes someros. Reducción de oxígeno. Impacto en pesca artesanal. Alertar autoridades locales.'},
+  {max:99,   label:'Bloom máx', color:'#7B2D8B', impact:'Emergencia costera. Cierre de playas probable. Impacto severo en turismo y pesca. Activar protocolo de remoción masiva. Coordinar con INVEMAR/autoridades.'}
+];
+function renderSargPanel(r){
+  var v=r.afai;
+  var level=SARG_LEVELS.find(function(l){return v<l.max;})||SARG_LEVELS[SARG_LEVELS.length-1];
+  var pct=Math.min(100,Math.round((v/0.3)*100));
+  var panel=document.getElementById('sarg-panel');
+  // Always show sargazo panel
+  panel.style.display='block';
+  document.getElementById('sarg-badge').textContent=level.label+' — AFAI '+v.toFixed(3);
+  document.getElementById('sarg-badge').style.color=level.color;
+  document.getElementById('sarg-bar').style.width=pct+'%';
+  document.getElementById('sarg-bar').style.background=level.color;
+  document.getElementById('sarg-impact').textContent=level.impact;
+}
+
+// ── SET LAYER ──
+function setLayer(l,btn){
+  currentLayer=l;
+  document.querySelectorAll('.lbtn').forEach(function(e){e.classList.remove('active');});
+  btn.classList.add('active');
+  if(!timelineOn){
+    circleMarkers.forEach(function(m,i){var c=LY[l].color(REEFS[i]);m.setStyle({fillColor:c,color:c});});
+  }
+  buildLegend();
+  var sb=document.getElementById('sensor-badge');
+  sb.style.display='block';
+  sb.innerHTML='<strong>Sensor activo</strong> '+LY[l].sensor;
+  clearTimeout(sb._t);sb._t=setTimeout(function(){sb.style.display='none';},4000);
+  if(currentReef!==null) renderSensorGrid(REEFS[currentReef]);
+}
+
+// ── MARKERS ──
+REEFS.forEach(function(r){
+  var c=LY[currentLayer].color(r), rad=8+r.al*3.5;
+  var ring=null;
+  if(r.al>=3){ring=L.circleMarker([r.lat,r.lng],{radius:rad+9,fillColor:c,color:c,weight:1.5,opacity:.2,fillOpacity:.07,className:'pulse-ring'}).addTo(map);}
+  pulseRings.push(ring);
+  var m=L.circleMarker([r.lat,r.lng],{radius:rad,fillColor:c,color:c,weight:2,opacity:.9,fillOpacity:.6}).addTo(map);
+  m.on('mouseover',function(){m.setStyle({fillOpacity:.88,weight:2.5});m.bindTooltip('<b>'+r.name+'</b><br>'+LY[currentLayer].desc(r)+' — Alerta '+r.al,{sticky:true}).openTooltip();});
+  m.on('mouseout',function(){m.setStyle({fillOpacity:.6,weight:2});m.closeTooltip();});
+  m.on('click',function(){showReef(r.id);});
+  markerVisible.push(true);
+  circleMarkers.push(m);
+});
+
+// ── DHW CHART ──
+function renderTrendChart(r){
+  var ctx=document.getElementById('dhw-chart').getContext('2d');
+  if(dhwChart){dhwChart.destroy();}
+  var color=AC[Math.min(r.al,4)];
+  dhwChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:WEEK_LABELS,datasets:[{data:r.trend,borderColor:color,backgroundColor:color+'22',borderWidth:2,pointRadius:3,pointBackgroundColor:color,fill:true,tension:.4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y.toFixed(1)+' C-sem';}}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:8}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:9}},min:0}}}
+  });
+}
+
+// ── TEMPERATURE COMPARISON CHART ──
+function renderTempChart(r){
+  var ctx=document.getElementById('temp-chart').getContext('2d');
+  if(tempChart){tempChart.destroy();}
+
+  // Generate monthly temperature profile (12 months) for this reef
+  // sstBase = annual average; apply seasonal variation based on latitude
+  var months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var lat=Math.abs(r.lat);
+  // Seasonal amplitude: higher in subtropics, lower near equator
+  var amp = lat<10 ? 1.2 : lat<20 ? 2.1 : lat<30 ? 3.2 : 4.5;
+  // Phase: northern hemisphere peaks Aug, southern peaks Feb
+  var phase = r.lat>0 ? 7 : 1; // month index of peak (0-based)
+
+  var baseTemps = months.map(function(_,i){
+    return parseFloat((r.sstBase + amp * Math.cos((i - phase) * Math.PI / 6)).toFixed(1));
+  });
+  var actualTemps = baseTemps.map(function(t){
+    return parseFloat((t + r.sst * 0.7 + (Math.random()-.5)*0.3).toFixed(1));
+  });
+  // Current month = March (index 2) — pin actual value
+  actualTemps[2] = r.sstActual;
+
+  // Bleaching threshold = sstBase + 1°C (NOAA standard)
+  var threshold = parseFloat((r.sstBase + 1.0).toFixed(1));
+  var thresholdLine = months.map(function(){return threshold;});
+
+  var alertColor = AC[Math.min(r.al,4)];
+  var delta = (r.sstActual - r.sstBase).toFixed(1);
+  var sign = delta > 0 ? '+' : '';
+  document.getElementById('temp-delta').textContent = sign+delta+'°C vs normal';
+  document.getElementById('temp-delta').style.color = delta > 1 ? '#E24B4A' : delta > 0 ? '#EF9F27' : '#1D9E75';
+
+  tempChart = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:months,
+      datasets:[
+        {
+          label:'Normal histórica',
+          data:baseTemps,
+          borderColor:'#378ADD',
+          backgroundColor:'rgba(55,138,221,0.08)',
+          borderWidth:2,
+          pointRadius:3,
+          pointBackgroundColor:'#378ADD',
+          fill:true,
+          tension:.4,
+          order:3
+        },
+        {
+          label:'Actual (GOES-16)',
+          data:actualTemps,
+          borderColor:alertColor,
+          backgroundColor:'rgba(226,75,74,0.08)',
+          borderWidth:2.5,
+          pointRadius:function(ctx){return ctx.dataIndex===2?6:3;},
+          pointBackgroundColor:function(ctx){return ctx.dataIndex===2?alertColor:'rgba(226,75,74,0.6)';},
+          pointBorderWidth:function(ctx){return ctx.dataIndex===2?2:1;},
+          pointBorderColor:function(ctx){return ctx.dataIndex===2?'#fff':'transparent';},
+          fill:false,
+          tension:.4,
+          order:2
+        },
+        {
+          label:'Umbral blanqueamiento',
+          data:thresholdLine,
+          borderColor:'rgba(226,75,74,0.45)',
+          backgroundColor:'rgba(226,75,74,0.06)',
+          borderWidth:1.5,
+          borderDash:[5,4],
+          pointRadius:0,
+          fill:'+0',
+          tension:0,
+          order:4
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label:function(c){
+              if(c.datasetIndex===2)return 'Umbral: '+c.parsed.y+'°C';
+              return c.dataset.label+': '+c.parsed.y+'°C';
+            },
+            afterBody:function(items){
+              if(!items.length)return [];
+              var idx=items[0].dataIndex;
+              var diff=(actualTemps[idx]-baseTemps[idx]).toFixed(1);
+              return ['Anomalía: '+(diff>0?'+':'')+diff+'°C'];
+            }
+          }
+        },
+        annotation:{} // no annotation plugin needed
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:8}}},
+        y:{
+          grid:{color:'rgba(255,255,255,.05)'},
+          ticks:{color:'#506070',font:{size:9},callback:function(v){return v+'°C';}},
+          min:parseFloat((Math.min.apply(null,baseTemps)-1).toFixed(0)),
+          max:parseFloat((Math.max.apply(null,actualTemps)+1).toFixed(0))
+        }
+      }
+    }
+  });
+}
+function showReef(id){
+  currentReef=id;
+  var r=REEFS[id];
+  // Switch to detail tab — find the Detalle button by text, not index
+  document.querySelectorAll('.stab').forEach(function(e){
+    e.classList.toggle('active', e.textContent.trim()==='Detalle');
+  });
+  TABS.forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.style.display=t==='detail'?'block':'none';});
+  document.getElementById('placeholder').style.display='none';
+  document.getElementById('reef-detail').style.display='block';
+  document.getElementById('d-name').textContent=r.name;
+  var b=document.getElementById('d-badge');b.textContent=AL[r.al];b.className='al-badge b'+r.al;
+  var se=document.getElementById('d-sst');se.textContent='+'+r.sst.toFixed(1)+'°C';se.style.color=AC[r.al];
+  var de=document.getElementById('d-dhw');de.textContent=r.dhw.toFixed(1);de.style.color=AC[r.al];
+  document.getElementById('d-risk').textContent=r.risk;
+  document.getElementById('d-date').textContent=r.date;
+  document.getElementById('d-action').textContent=r.action;
+  var pct=Math.min(100,Math.round((r.dhw/16)*100));
+  var f=document.getElementById('d-dhwbar');f.style.width=pct+'%';f.style.background=AC[r.al];
+  // Risk index
+  var ri=riskIndex(r);
+  var riColor=ri>=75?'#A32D2D':ri>=50?'#D85A30':ri>=25?'#EF9F27':'#1D9E75';
+  document.getElementById('ri-fill').style.width=ri+'%';
+  document.getElementById('ri-fill').style.background=riColor;
+  document.getElementById('ri-val').textContent=ri;
+  document.getElementById('ri-val').style.color=riColor;
+  // Watch btn
+  var watching=watchList.indexOf(id)>=0;
+  var wb=document.getElementById('watch-btn');
+  wb.className='watch-btn'+(watching?' watching':'');
+  wb.title=watching?'Quitar vigilancia':'Activar vigilancia';
+  wb.textContent=watching?'🔔':'🔕';
+  // Sensor grid
+  renderSensorGrid(r);
+  // Sargazo panel
+  renderSargPanel(r);
+  // Compare btn
+  var inList=compareList.some(function(c){return c.id===id;});
+  var cbtn=document.getElementById('add-compare-btn');
+  cbtn.textContent=inList?'✓':'+ Comparar';
+  cbtn.className='sp-compare-btn'+(inList?' added':'');
+  document.getElementById('d-btn').onclick=function(){window.open('https://coralreefwatch.noaa.gov/product/5km/index.php','_blank');};
+  renderTrendChart(r);
+  renderTempChart(r);
+  circleMarkers.forEach(function(m,i){m.setStyle({weight:i===id?3.5:2});});
+  document.querySelectorAll('.ritem').forEach(function(e){e.classList.remove('sel');});
+  var ri2=document.getElementById('ri-'+id);if(ri2)ri2.classList.add('sel');
+  map.flyTo([r.lat,r.lng],Math.max(map.getZoom(),5),{duration:1.2});
+}
+
+// ── WATCH / ALERTS ──
+function toggleWatch(){
+  if(currentReef===null)return;
+  var idx=watchList.indexOf(currentReef);
+  if(idx>=0){watchList.splice(idx,1);}
+  else{
+    watchList.push(currentReef);
+    var r=REEFS[currentReef];
+    if(r.al>=2){
+      var msg='⚠️ '+r.name+' está en '+AS[r.al];
+      alertHistory.unshift({name:r.name,msg:msg,time:'Ahora',id:r.id,al:r.al});
+      showToast(r.name, msg);
+    }
+  }
+  showReef(currentReef);
+  renderWatchList();
+  updateAlertsTab();
+}
+function renderWatchList(){
+  var el=document.getElementById('watch-list-el');
+  if(!watchList.length){el.innerHTML='<div style="color:var(--t4);font-size:11px;margin-bottom:8px;">Ningún sitio en vigilancia.</div>';return;}
+  el.innerHTML=watchList.map(function(id){
+    var r=REEFS[id];
+    return '<div class="wl-item"><div class="wl-dot" style="background:'+AC[r.al]+';"></div><div class="wl-name">'+r.name+'</div><button class="wl-remove" onclick="removeWatch('+id+')">✕</button></div>';
+  }).join('');
+}
+function removeWatch(id){
+  watchList=watchList.filter(function(w){return w!==id;});
+  renderWatchList();
+  updateAlertsTab();
+  if(currentReef===id)showReef(id);
+}
+function updateAlertsTab(){
+  var el=document.getElementById('alerts-list');
+  var badge=document.getElementById('alerts-tab');
+  if(!alertHistory.length){
+    el.innerHTML='<div class="al-empty">Activa la vigilancia en sitios individuales con 🔔 para recibir notificaciones cuando suben de alerta.</div>';
+    badge.textContent='Alertas';return;
+  }
+  badge.textContent='Alertas ('+alertHistory.length+')';
+  el.innerHTML=alertHistory.map(function(a){
+    return '<div class="al-item" onclick="showReef('+a.id+')">'
+      +'<div class="al-item-top"><div class="al-item-name">'+a.name+'</div><div class="al-item-time">'+a.time+'</div></div>'
+      +'<div class="al-item-msg" style="color:'+AC[a.al]+';font-weight:600;">'+a.msg+'</div>'
+      +'</div>';
+  }).join('');
+}
+function showToast(title,msg){
+  var t=document.getElementById('toast');
+  t.innerHTML='<strong>'+title+'</strong>'+msg;
+  t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},5000);
+}
+
+// ── WHATSAPP SHARE ──
+function shareApp(){
+  var crit=REEFS.filter(function(r){return r.al>=3;}).length;
+  var watch2=REEFS.filter(function(r){return r.al>=1&&r.al<=2;}).length;
+  var maxDhw=Math.max.apply(null,REEFS.map(function(r){return r.dhw;})).toFixed(1);
+  var msg='🪸 *NOAA Coral Reef Watch — Monitor Satelital*\n\n'
+    +'📊 *Estado actual de los arrecifes:*\n'
+    +'🔴 Sitios críticos (Alerta 3-4): *'+crit+'*\n'
+    +'🟠 En vigilancia (Alerta 1-2): *'+watch2+'*\n'
+    +'🟢 Sin estrés: *'+(REEFS.length-crit-watch2)+'*\n'
+    +'🌡️ DHW máximo global: *'+maxDhw+' C-sem*\n\n'
+    +'📅 Actualizado: *'+new Date().toLocaleDateString('es-CO',{year:'numeric',month:'short',day:'numeric'})+'*\n\n'
+    +'🔗 *Ver monitor en vivo:* https://coral-monitor.vercel.app/';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+function shareReef(){
+  if(currentReef===null){showToast('Sin selección','Selecciona un arrecife primero.');return;}
+  var r=REEFS[currentReef];
+  var ri=riskIndex(r);
+  var alEmoji=['🟢','🟡','🟠','🔴','🔴'];
+  var msg=alEmoji[r.al]+' *'+r.name+'*\n'
+    +'*'+AL[r.al]+'*\n\n'
+    +'🌡️ SST Anomalía: *+'+r.sst.toFixed(1)+'°C*\n'
+    +'🔥 DHW: *'+r.dhw.toFixed(1)+' C-sem*\n'
+    +'⚡ Índice de riesgo: *'+ri+'/100*\n'
+    +'💧 Turbidez: *'+r.turb.toFixed(1)+' m⁻¹*\n'
+    +'🔬 Clorofila-a: *'+r.chl.toFixed(1)+' mg/m³*\n\n'
+    +'⚠️ *'+r.risk+'*\n'
+    +'📋 '+r.action+'\n\n'
+    +'📅 '+r.date+'\n'
+    +'🔗 *Ver monitor en vivo:* https://coral-monitor.vercel.app/';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+function exportReport(){
+  if(currentReef===null)return;
+  var r=REEFS[currentReef];
+  var ri=riskIndex(r);
+  var lines=[
+    'NOAA CORAL REEF WATCH — REPORTE DE SITIO',
+    '==========================================',
+    'Generado: '+new Date().toLocaleString('es-CO'),
+    '',
+    'SITIO: '+r.name,
+    'Nivel de alerta: '+AL[r.al],
+    'Riesgo: '+r.risk,
+    'Actualizado: '+r.date,
+    '',
+    'MÉTRICAS PRINCIPALES',
+    '--------------------',
+    'SST Anomalía:     +'+r.sst.toFixed(1)+' °C',
+    'DHW:              '+r.dhw.toFixed(1)+' C-sem',
+    'Índice de riesgo: '+ri+'/100',
+    '',
+    'SENSORES SATELITALES',
+    '--------------------',
+    'Clorofila-a:   '+r.chl.toFixed(1)+' mg/m³',
+    'Turbidez:      '+r.turb.toFixed(1)+' m⁻¹',
+    'Sargazo AFAI:  '+r.afai.toFixed(3)+' ('+( r.afai<0.02?'Ausente':r.afai<0.05?'Disperso':r.afai<0.12?'Moderado':r.afai<0.25?'Denso':'Bloom')+')',
+    'CO2 atmosf.:   '+r.co2+' ppm',
+    'Índice UV:     '+r.uv,
+    'Precipitación: '+r.rain.toFixed(1)+' mm/h',
+    'Nivel del Mar: +'+r.sla+' cm',
+    'Viento:        '+r.wind.toFixed(1)+' m/s',
+    'Hábitat:       '+r.hab,
+    'Batimetría:    '+r.bathy+' m',
+    '',
+    'RESPUESTA RECOMENDADA',
+    '---------------------',
+    r.action,
+    '',
+    'Fuente: NOAA Coral Reef Watch — coralreefwatch.noaa.gov'
+  ];
+  var blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='reporte_'+r.name.replace(/[\[\]\s\/]/g,'_')+'.txt';
+  a.click();
+  showToast('Reporte exportado','Archivo descargado para '+r.name);
+}
+
+function exportColombiaReport(){
+  var lines=[
+    'REPORTE COLOMBIA — NOAA CORAL REEF WATCH',
+    '==========================================',
+    'Generado: '+new Date().toLocaleString('es-CO'),
+    'Para: INVEMAR / Parques Nacionales Naturales',
+    ''
+  ];
+  CO_IDS.forEach(function(id){
+    var r=REEFS[id];
+    var ri=riskIndex(r);
+    lines.push('► '+r.name);
+    lines.push('  Alerta: '+AS[r.al]+'  |  SST: +'+r.sst.toFixed(1)+'°C  |  DHW: '+r.dhw.toFixed(1)+' C-sem  |  Sargazo: AFAI '+r.afai.toFixed(3)+'  |  Riesgo: '+ri+'/100');
+    lines.push('  Acción: '+r.action);
+    lines.push('  Agencias: '+(CO_AGENCIES[id]||[]).join(', '));
+    lines.push('');
+  });
+  lines.push('Fuente: NOAA Coral Reef Watch — coralreefwatch.noaa.gov');
+  var blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='reporte_colombia_'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click();
+  showToast('Reporte Colombia','Exportado para INVEMAR / Parques Nacionales');
+}
+
+// ── TABS ──
+function setTab(name,btn){
+  document.querySelectorAll('.stab').forEach(function(e){e.classList.remove('active');});
+  btn.classList.add('active');
+  TABS.forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.style.display=t===name?'block':'none';});
+  if(name==='dashboard')buildDashboard();
+  if(name==='colombia')buildColombiaPanel();
+  if(name==='forecast')buildForecast();
+  if(name==='alerts'){renderWatchList();updateAlertsTab();}
+}
+
+// ── COMPARE ──
+function addToCompare(){
+  if(currentReef===null){showToast('Sin selección','Haz clic en un arrecife del mapa primero.');return;}
+  addToCompareById(currentReef);
+}
+function addToCompareById(id){
+  if(compareList.some(function(c){return c.id===id;})){
+    showToast('Ya en comparación','Este sitio ya fue agregado.');
+    openCompareTab();
+    return;
+  }
+  if(compareList.length>=4){showToast('Máximo alcanzado','Solo se pueden comparar 4 arrecifes a la vez.');return;}
+  compareList.push(REEFS[id]);
+  updateCompareUI();
+  var cbtn=document.getElementById('add-compare-btn');
+  if(cbtn){cbtn.textContent='✓ En comparación';cbtn.className='sp-compare-btn added';}
+  showToast('Agregado', REEFS[id].name.replace('[CO] ','')+(compareList.length>=2?' — Abriendo comparación...':' — Agrega otro sitio para comparar'));
+  if(compareList.length>=2){setTimeout(openCompareTab,600);}
+}
+function removeFromCompare(id){
+  compareList=compareList.filter(function(c){return c.id!==id;});
+  updateCompareUI();
+  if(currentReef===id){var cbtn=document.getElementById('add-compare-btn');if(cbtn){cbtn.textContent='+ Comparar';cbtn.className='sp-compare-btn';}}
+}
+function clearCompare(){
+  compareList=[];
+  updateCompareUI();
+  if(currentReef!==null){var cbtn=document.getElementById('add-compare-btn');if(cbtn){cbtn.textContent='+ Comparar';cbtn.className='sp-compare-btn';}}
+}
+function updateCompareUI(){
+  var bar=document.getElementById('compare-bar');
+  compareList.length?bar.classList.add('show'):bar.classList.remove('show');
+  document.getElementById('cb-tags').innerHTML=compareList.map(function(r){
+    return '<div class="cb-tag"><div class="cb-tag-dot" style="background:'+AC[Math.min(r.al,4)]+';"></div><span>'+r.name.replace('[CO] ','').split('(')[0].trim()+'</span><span class="cb-tag-x" onclick="removeFromCompare('+r.id+')">✕</span></div>';
+  }).join('');
+  document.getElementById('compare-go').disabled=compareList.length<2;
+  renderCompareTab();
+  document.getElementById('clear-compare').style.display=compareList.length?'block':'none';
+}
+function renderCompareTab(){
+  var el=document.getElementById('cmp-content');
+  if(!compareList.length){
+    el.innerHTML='<div class="cmp-empty" style="padding:40px 0;"><div style="font-size:32px;margin-bottom:12px;">⚖️</div><div style="font-size:13px;color:var(--t3);margin-bottom:8px;">Sin arrecifes seleccionados</div><div style="font-size:11px;color:var(--t4);line-height:1.7;">Haz clic en cualquier punto del mapa,<br>luego presiona <b style=\"color:var(--t2)\">+ Comparar</b> en el panel de detalle.<br>Puedes comparar hasta 4 sitios.</div></div>';
+    document.getElementById('corr-wrap').style.display='none';
+    return;
+  }
+  // Build comparison table
+  var metrics=[
+    {label:'Nivel de alerta', fn:function(r){return AS[r.al];}, color:function(r){return AC[Math.min(r.al,4)];}},
+    {label:'SST Anomalía',    fn:function(r){return '+'+r.sst.toFixed(1)+'°C';}, color:function(r){return r.sst>2?'#E24B4A':r.sst>1?'#D85A30':'#EF9F27';}},
+    {label:'DHW (C-sem)',     fn:function(r){return r.dhw.toFixed(1);}, color:function(r){return r.dhw>12?'#A32D2D':r.dhw>8?'#E24B4A':r.dhw>4?'#EF9F27':'#1D9E75';}},
+    {label:'Índice de riesgo',fn:function(r){var v=riskIndex(r);return v+'/100';}, color:function(r){var v=riskIndex(r);return v>=75?'#A32D2D':v>=50?'#D85A30':v>=25?'#EF9F27':'#1D9E75';}},
+    {label:'Clorofila-a',     fn:function(r){return r.chl.toFixed(1)+' mg/m³';}, color:function(){return '#8aaec8';}},
+    {label:'Turbidez',        fn:function(r){return r.turb.toFixed(1)+' m⁻¹';},  color:function(){return '#8aaec8';}},
+    {label:'Sargazo AFAI',    fn:function(r){return r.afai.toFixed(3);}, color:function(r){return r.afai>0.25?'#7B2D8B':r.afai>0.12?'#D85A30':r.afai>0.05?'#E8A800':'#1D9E75';}},
+    {label:'Temp. actual',    fn:function(r){return r.sstActual.toFixed(1)+'°C';}, color:function(){return '#E24B4A';}},
+    {label:'Temp. histórica', fn:function(r){return r.sstBase.toFixed(1)+'°C';},  color:function(){return '#378ADD';}},
+    {label:'Viento',          fn:function(r){return r.wind.toFixed(1)+' m/s';},   color:function(){return '#8aaec8';}},
+    {label:'Hábitat',         fn:function(r){return r.hab;},                       color:function(){return '#8aaec8';}},
+    {label:'Batimetría',      fn:function(r){return r.bathy+' m';},                color:function(){return '#8aaec8';}}
+  ];
+  var cols=compareList.length;
+  var colW=Math.floor(100/cols);
+  var html='<div style="overflow-x:auto;">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+    +'<thead><tr>'
+    +'<th style="text-align:left;padding:6px 8px;font-size:9px;color:var(--t4);font-family:var(--fd);letter-spacing:.07em;border-bottom:1px solid var(--bd);width:34%;">MÉTRICA</th>'
+    +compareList.map(function(r){
+      return '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--bd);width:'+colW+'%;">'
+        +'<div style="font-size:10px;font-weight:700;color:var(--t1);line-height:1.3;">'+r.name.replace('[CO] ','🇨🇴 ').replace(/\(.*\)/,'').trim()+'</div>'
+        +'<div class="al-badge b'+r.al+'" style="font-size:9px;padding:2px 6px;margin:4px auto 0;display:inline-block;">'+AS[r.al]+'</div>'
+        +'<button onclick="removeFromCompare('+r.id+')" style="display:block;margin:4px auto 0;background:none;border:none;color:var(--t4);cursor:pointer;font-size:11px;">✕ quitar</button>'
+        +'</th>';
+    }).join('')
+    +'</tr></thead><tbody>';
+  metrics.forEach(function(m,mi){
+    var rowBg=mi%2===0?'background:rgba(255,255,255,.02);':'';
+    html+='<tr style="'+rowBg+'">'
+      +'<td style="padding:7px 8px;color:var(--t3);font-size:10px;">'+m.label+'</td>'
+      +compareList.map(function(r){
+        // highlight best/worst for numeric metrics
+        var val=m.fn(r);
+        var color=m.color(r);
+        return '<td style="text-align:center;padding:7px 4px;font-family:var(--fd);font-weight:700;color:'+color+';">'+val+'</td>';
+      }).join('')
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  // Quick-add current reef button
+  if(currentReef!==null && !compareList.some(function(c){return c.id===currentReef;})){
+    html+='<button onclick="addToCompareById('+currentReef+')" style="margin-top:10px;width:100%;padding:9px;background:rgba(83,74,183,.12);border:1px solid rgba(83,74,183,.3);border-radius:7px;color:#AFA9EC;font-size:12px;cursor:pointer;">+ Agregar arrecife actual: '+REEFS[currentReef].name.replace('[CO] ','')+'</button>';
+  }
+  el.innerHTML=html;
+  // Correlation chart SST vs DHW
+  if(compareList.length>=2){
+    document.getElementById('corr-wrap').style.display='block';
+    setTimeout(function(){
+      var cctx=document.getElementById('corr-chart').getContext('2d');
+      if(corrChart)corrChart.destroy();
+      corrChart=new Chart(cctx,{
+        type:'scatter',
+        data:{datasets:compareList.map(function(r){return {label:r.name.replace('[CO] ','').split('(')[0].trim(),data:[{x:r.sst,y:r.dhw}],backgroundColor:AC[Math.min(r.al,4)],pointRadius:9,pointHoverRadius:12};})},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8aaec8',font:{size:9},boxWidth:10}},tooltip:{callbacks:{label:function(ctx){var r=compareList[ctx.datasetIndex];return r.name.replace('[CO] ','')+': SST +'+r.sst.toFixed(1)+'°C, DHW '+r.dhw.toFixed(1);}}}},scales:{x:{title:{display:true,text:'SST Anomalía (°C)',color:'#506070',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070'}},y:{title:{display:true,text:'DHW (C-sem)',color:'#506070',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070'}}}}
+      });
+    },50);
+  } else {
+    document.getElementById('corr-wrap').style.display='none';
+  }
+}
+function openCompareTab(){
+  document.querySelectorAll('.stab').forEach(function(e){
+    e.classList.toggle('active', e.textContent.trim()==='Comparar');
+  });
+  TABS.forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.style.display=t==='compare'?'block':'none';});
+  renderCompareTab();
+}
+
+// ══════════════════════════════════════════
+//  FORECAST ENGINE
+// ══════════════════════════════════════════
+function computeForecast(r){
+  // ── 1. DHW TREND SLOPE (últimas 4 semanas) ──
+  var trend = r.trend;
+  var recentSlope = 0;
+  for(var i=8;i<11;i++) recentSlope += (trend[i+1]-trend[i]);
+  recentSlope = recentSlope/3; // avg weekly change
+
+  // ── 2. MITIGATION FACTORS ──
+  // Viento fuerte enfría agua (>6 m/s reduce tasa)
+  var windFactor = r.wind > 6 ? 0.75 : r.wind > 4 ? 0.90 : 1.0;
+  // Turbidez alta reduce radiación UV sobre coral (leve mitigación)
+  var turbFactor = r.turb > 1.0 ? 0.92 : r.turb > 0.6 ? 0.97 : 1.0;
+  // Clorofila muy alta → compite con coral pero también sombrea
+  var chlFactor  = r.chl > 3.0 ? 0.94 : 1.0;
+
+  // ── 3. AGGRAVATION FACTORS ──
+  // Sargazo denso bloquea luz y consume O₂
+  var sargFactor = r.afai > 0.20 ? 1.12 : r.afai > 0.10 ? 1.06 : 1.0;
+  // SST anomalía alta acelera acumulación DHW
+  var sstFactor  = r.sst > 2.0 ? 1.18 : r.sst > 1.0 ? 1.08 : 1.0;
+
+  var combinedFactor = windFactor * turbFactor * chlFactor * sargFactor * sstFactor;
+
+  // ── 4. PROJECT DHW 4 WEEKS ──
+  // Use weighted slope: recent weeks have 2x weight
+  var projectedSlope = recentSlope * combinedFactor;
+  // Prevent negative projections — DHW never drops below 0
+  var dhwW1 = Math.max(0, parseFloat((r.dhw + projectedSlope * 1).toFixed(1)));
+  var dhwW2 = Math.max(0, parseFloat((r.dhw + projectedSlope * 2).toFixed(1)));
+  var dhwW3 = Math.max(0, parseFloat((r.dhw + projectedSlope * 3).toFixed(1)));
+  var dhwW4 = Math.max(0, parseFloat((r.dhw + projectedSlope * 4).toFixed(1)));
+
+  // ── 5. BLEACHING PROBABILITY ──
+  // Based on NOAA CRW: DHW>=4 = watch, >=8 = warning, >=12 = alert 2, >=16 = alert 3+
+  // Sigmoid-like probability curve anchored on DHW and trend
+  var dhwMax = dhwW4;
+  var rawProb;
+  if(dhwMax < 2)       rawProb = 3;
+  else if(dhwMax < 4)  rawProb = Math.round(5  + (dhwMax-2)/2 * 15);
+  else if(dhwMax < 8)  rawProb = Math.round(20 + (dhwMax-4)/4 * 35);
+  else if(dhwMax < 12) rawProb = Math.round(55 + (dhwMax-8)/4 * 25);
+  else if(dhwMax < 16) rawProb = Math.round(80 + (dhwMax-12)/4 * 15);
+  else                 rawProb = Math.min(99, Math.round(95 + (dhwMax-16)*0.5));
+  // Adjust for mitigation
+  var bleachProb = Math.min(99, Math.max(1, Math.round(rawProb * combinedFactor)));
+
+  // ── 6. PROJECTED ALERT LEVEL ──
+  var projAl = dhwW4 < 4 ? 0 : dhwW4 < 8 ? 1 : dhwW4 < 12 ? 2 : dhwW4 < 16 ? 3 : 4;
+
+  // ── 7. ESTIMATED BLEACHING DATE ──
+  var daysToBlch = null;
+  if(r.dhw < 4 && projectedSlope > 0){
+    var daysTo4 = Math.ceil((4 - r.dhw) / (projectedSlope/7));
+    daysToBlch = daysTo4 > 0 && daysTo4 < 60 ? daysTo4 : null;
+  }
+
+  // ── 8. TREND LABEL ──
+  var trendLabel, trendColor;
+  if(projectedSlope > 0.8)      { trendLabel='↑↑ Acelerando';  trendColor='#E24B4A'; }
+  else if(projectedSlope > 0.3) { trendLabel='↑ Subiendo';     trendColor='#D85A30'; }
+  else if(projectedSlope > 0)   { trendLabel='↗ Leve subida';  trendColor='#EF9F27'; }
+  else if(projectedSlope > -0.3){ trendLabel='→ Estable';       trendColor='#8aaec8'; }
+  else                           { trendLabel='↓ Bajando';      trendColor='#1D9E75'; }
+
+  // ── 9. UNCERTAINTY BAND ──
+  var uncertainty = Math.abs(projectedSlope) * 0.4 + 0.8;
+
+  return {
+    dhw:r.dhw, dhwW1:dhwW1, dhwW2:dhwW2, dhwW3:dhwW3, dhwW4:dhwW4,
+    bleachProb:bleachProb, projAl:projAl, trendLabel:trendLabel,
+    trendColor:trendColor, slope:projectedSlope, uncertainty:uncertainty,
+    daysToBlch:daysToBlch, factors:{wind:windFactor,turb:turbFactor,chl:chlFactor,sarg:sargFactor,sst:sstFactor}
+  };
+}
+
+function buildForecast(){
+  // Compute forecasts for all reefs
+  var forecasts = REEFS.map(function(r){
+    return {r:r, fc:computeForecast(r)};
+  });
+
+  // Sort by projected bleaching probability descending
+  forecasts.sort(function(a,b){return b.fc.bleachProb - a.fc.bleachProb;});
+
+  // ── SUMMARY KPIs ──
+  var critNext4 = forecasts.filter(function(f){return f.fc.projAl>=3;}).length;
+  var newCrit   = forecasts.filter(function(f){return f.fc.projAl>=3 && f.r.al<3;}).length;
+  var avgProb   = Math.round(forecasts.reduce(function(s,f){return s+f.fc.bleachProb;},0)/forecasts.length);
+  var maxDhwW4  = Math.max.apply(null, forecasts.map(function(f){return f.fc.dhwW4;})).toFixed(1);
+
+  document.getElementById('fc-summary').innerHTML =
+    fcKpi('CRÍTICOS EN 4 SEM', critNext4, 'de '+REEFS.length+' sitios', critNext4>5?'trend-up':'trend-flat') +
+    fcKpi('NUEVOS EN CRÍTICO', newCrit, 'escalarán alerta', newCrit>0?'trend-up':'trend-dn') +
+    fcKpi('PROB. MEDIA BLEACH', avgProb+'%', 'promedio global', avgProb>50?'trend-up':'trend-flat') +
+    fcKpi('DHW MÁX. PROYECTADO', maxDhwW4, 'C-sem en sem. 4', 'trend-up');
+
+  // ── GLOBAL DHW PROJECTION CHART (top 8) ──
+  var top8 = forecasts.slice(0,8);
+  var gctx = document.getElementById('fc-global-chart').getContext('2d');
+  if(globalFcChart) globalFcChart.destroy();
+  var weeks = ['HOY','S+1','S+2','S+3','S+4'];
+  globalFcChart = new Chart(gctx,{
+    type:'line',
+    data:{
+      labels:weeks,
+      datasets: top8.map(function(f){
+        var c = AC[Math.min(f.fc.projAl,4)];
+        return {
+          label: f.r.name.replace('[CO] ','').split('(')[0].trim().substring(0,18),
+          data: [f.r.dhw, f.fc.dhwW1, f.fc.dhwW2, f.fc.dhwW3, f.fc.dhwW4],
+          borderColor: c, backgroundColor: 'transparent',
+          borderWidth: 1.8, pointRadius: 2, tension: 0.3
+        };
+      })
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#506070',font:{size:8},boxWidth:12,padding:8}},
+        tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toFixed(1)+' C-sem';}}}
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:9}}},
+        y:{
+          grid:{color:'rgba(255,255,255,.05)'},
+          ticks:{color:'#506070',font:{size:9},callback:function(v){return v+' C-sem';}},
+          min:0
+        }
+      }
+    }
+  });
+
+  // ── PER-REEF FORECAST CARDS ──
+  document.getElementById('fc-list').innerHTML = forecasts.map(function(f){
+    var r=f.r, fc=f.fc;
+    var probColor = fc.bleachProb>=80?'#A32D2D':fc.bleachProb>=55?'#E24B4A':fc.bleachProb>=35?'#D85A30':fc.bleachProb>=20?'#EF9F27':'#1D9E75';
+    var alColor   = AC[Math.min(fc.projAl,4)];
+    var highlight = fc.projAl > r.al ? ' fc-highlight' : '';
+    var escalate  = fc.projAl > r.al ? '<span style="font-size:9px;background:rgba(226,75,74,.2);color:#E24B4A;border-radius:3px;padding:1px 5px;margin-left:5px;">↑ Escalará</span>' : '';
+
+    // Factor breakdown mini-bars
+    var mitigTxt = [];
+    if(fc.factors.wind<0.9)  mitigTxt.push('💨 viento');
+    if(fc.factors.turb<0.97) mitigTxt.push('💧 turbidez');
+    if(fc.factors.sarg>1.05) mitigTxt.push('🟤 sargazo agrava');
+    if(fc.factors.sst>1.1)   mitigTxt.push('🌡️ SST acelera');
+
+    var dateStr = '';
+    if(fc.daysToBlch){
+      var d = new Date(); d.setDate(d.getDate()+fc.daysToBlch);
+      dateStr = 'Blanqueamiento posible ~'+d.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+    }
+
+    return '<div class="fc-card'+highlight+'" onclick="showReef('+r.id+')">'
+      +'<div class="fc-card-top">'
+      +'<div><div class="fc-name">'+r.name+(fc.projAl>r.al?escalate:'')+'</div>'
+      +'<div style="font-size:9px;color:var(--t4);margin-top:2px;">Alerta actual: '+AS[r.al]+' → Proyectada: <span style="color:'+alColor+';font-weight:700;">'+AS[Math.min(fc.projAl,4)]+'</span></div></div>'
+      +'<div><div class="fc-prob" style="color:'+probColor+';">'+fc.bleachProb+'%</div><div class="fc-prob-lbl">prob. blanqueo</div></div>'
+      +'</div>'
+      +'<div class="fc-bars">'
+      +'<div class="fc-bar-row"><div class="fc-bar-lbl">DHW hoy</div><div class="fc-bar-track"><div class="fc-bar-fill" style="width:'+Math.min(100,(r.dhw/18)*100)+'%;background:'+AC[r.al]+';"></div></div><div class="fc-bar-val" style="color:'+AC[r.al]+';">'+r.dhw.toFixed(1)+'</div></div>'
+      +'<div class="fc-bar-row"><div class="fc-bar-lbl">DHW sem+4</div><div class="fc-bar-track"><div class="fc-bar-fill" style="width:'+Math.min(100,(fc.dhwW4/18)*100)+'%;background:'+alColor+';"></div></div><div class="fc-bar-val" style="color:'+alColor+';">'+fc.dhwW4.toFixed(1)+'</div></div>'
+      +'</div>'
+      +(mitigTxt.length?'<div style="font-size:9px;color:var(--t3);margin-top:5px;">Factores: '+mitigTxt.join(' · ')+'</div>':'')
+      +'<div class="fc-footer">'
+      +'<div class="fc-trend" style="color:'+fc.trendColor+';">'+fc.trendLabel+'</div>'
+      +'<div class="fc-date">'+(dateStr||'S+4: '+fc.dhwW4.toFixed(1)+' C-sem')+'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function fcKpi(label,val,sub,cls){
+  return '<div class="dash-kpi"><div class="dash-kpi-l">'+label+'</div><div class="dash-kpi-v '+cls+'">'+val+'</div><div class="dash-kpi-sub">'+sub+'</div></div>';
+}
+function buildDashboard(){
+  var total=REEFS.length;
+  var crit=REEFS.filter(function(r){return r.al>=3;}).length;
+  var watch2=REEFS.filter(function(r){return r.al>=1&&r.al<=2;}).length;
+  var ok=REEFS.filter(function(r){return r.al===0;}).length;
+  var avgDhw=(REEFS.reduce(function(s,r){return s+r.dhw;},0)/total).toFixed(1);
+  var maxDhw=Math.max.apply(null,REEFS.map(function(r){return r.dhw;})).toFixed(1);
+  var coOnly=REEFS.filter(function(r){return REEF_REGION[r.id]==='co';});
+  var avgCo=(coOnly.reduce(function(s,r){return s+r.dhw;},0)/coOnly.length).toFixed(1);
+  document.getElementById('dash-kpis').innerHTML=
+    kpiBox('SITIOS CRÍTICOS',crit,'de '+total+' monitoreados','trend-up')+
+    kpiBox('DHW PROM. GLOBAL',avgDhw,'C-sem','trend-up')+
+    kpiBox('DHW MÁXIMO',maxDhw,'C-sem (GBR)','trend-up')+
+    kpiBox('COLOMBIA PROM',avgCo,'C-sem DHW',+avgCo>5?'trend-up':'trend-dn');
+  var counts=[ok,watch2,crit],colors=['#1D9E75','#D85A30','#A32D2D'],labels=['Sin estrés','Vigilancia','Críticos'];
+  document.getElementById('alert-dist').innerHTML=counts.map(function(v,i){var pct=Math.round((v/total)*100);return '<div class="ad-seg" style="flex:'+v+';background:'+colors[i]+';" title="'+labels[i]+': '+v+'">'+(pct>12?pct+'%':'')+'</div>';}).join('');
+  var regions=['co','caribe','gbr','indo','otro'],rLabels=['🇨🇴 Col.','Caribe','GBR','Indo-Pac.','Otras'];
+  var rVals=regions.map(function(rk){var rs=REEFS.filter(function(r){return REEF_REGION[r.id]===rk;});return rs.length?(rs.reduce(function(s,r){return s+r.dhw;},0)/rs.length).toFixed(1):0;});
+  var rColors=rVals.map(function(v){return v>=12?'#A32D2D':v>=8?'#E24B4A':v>=4?'#D85A30':'#1D9E75';});
+  var dctx=document.getElementById('dash-chart').getContext('2d');
+  if(dashChart)dashChart.destroy();
+  dashChart=new Chart(dctx,{type:'bar',data:{labels:rLabels,datasets:[{data:rVals,backgroundColor:rColors,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+' C-sem';}}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8aaec8',font:{size:9}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:9}},min:0}}}});
+  // Global SST vs DHW correlation scatter
+  var gctx=document.getElementById('global-corr-chart').getContext('2d');
+  if(globalCorrChart)globalCorrChart.destroy();
+  var scatterData=REEFS.map(function(r){return {x:r.sst,y:r.dhw,reefName:r.name};});
+  globalCorrChart=new Chart(gctx,{
+    type:'scatter',
+    data:{datasets:[{label:'Arrecifes',data:scatterData,backgroundColor:REEFS.map(function(r){return AC[r.al]+'cc';}),pointRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw.reefName+': SST +'+c.parsed.x+'°C, DHW '+c.parsed.y;}}}},scales:{x:{title:{display:true,text:'SST Anomalía (°C)',color:'#506070',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:8}}},y:{title:{display:true,text:'DHW (C-sem)',color:'#506070',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#506070',font:{size:8}}}}}
+  });
+  var top=[].concat(REEFS).sort(function(a,b){return b.dhw-a.dhw;}).slice(0,5);
+  document.getElementById('top-list').innerHTML=top.map(function(r){return '<div class="top-row" onclick="showReef('+r.id+')"><div class="top-dot" style="background:'+AC[r.al]+';"></div><div class="top-name">'+r.name+'</div><div class="top-val" style="color:'+AC[r.al]+';">'+r.dhw.toFixed(1)+' Csem</div></div>';}).join('');
+}
+function kpiBox(label,val,sub,cls){return '<div class="dash-kpi"><div class="dash-kpi-l">'+label+'</div><div class="dash-kpi-v '+cls+'">'+val+'</div><div class="dash-kpi-sub">'+sub+'</div></div>';}
+
+// ── COLOMBIA PANEL ──
+function buildColombiaPanel(){
+  document.getElementById('co-sites').innerHTML=CO_IDS.map(function(id){
+    var r=REEFS[id];
+    var ri=riskIndex(r);
+    var ags=(CO_AGENCIES[id]||[]).map(function(a){return '<span class="co-ag-tag">'+a+'</span>';}).join('');
+    return '<div class="co-site" onclick="showReef('+id+')">'
+      +'<div class="co-site-top"><div class="co-site-name">'+r.name.replace('[CO] ','')+'</div><span class="al-badge b'+r.al+'" style="font-size:9px;padding:2px 8px;margin:0;">'+AS[r.al]+'</span></div>'
+      +'<div class="co-site-vals"><span>SST <span class="co-site-val" style="color:'+AC[r.al]+';"> +'+r.sst.toFixed(1)+'°C</span></span><span>DHW <span class="co-site-val" style="color:'+AC[r.al]+';"> '+r.dhw.toFixed(1)+'</span></span><span>Sargazo <span class="co-site-val" style="color:#C47FD8;"> AFAI '+r.afai.toFixed(2)+'</span></span><span>Riesgo <span class="co-site-val" style="color:#EF9F27;"> '+ri+'/100</span></span></div>'
+      +'<div class="co-agency">'+ags+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── SEARCH ──
+function onSearch(q){
+  var box=document.getElementById('search-results');
+  q=q.trim().toLowerCase();
+  if(!q){box.style.display='none';return;}
+  var matches=REEFS.filter(function(r){return r.name.toLowerCase().indexOf(q)>=0;});
+  if(!matches.length){box.style.display='none';return;}
+  box.innerHTML=matches.map(function(r){return '<div class="sr-item" onclick="searchSelect('+r.id+')"><div class="sr-dot" style="background:'+AC[r.al]+';"></div><span>'+r.name+'</span></div>';}).join('');
+  box.style.display='block';
+}
+function onSearchKey(e){if(e.key==='Escape'){document.getElementById('search-results').style.display='none';document.getElementById('search-input').value='';}}
+function searchSelect(id){document.getElementById('search-results').style.display='none';document.getElementById('search-input').value='';showReef(id);}
+
+// ── FILTERS ──
+function toggleFilterPanel(){var p=document.getElementById('filter-panel');p.style.display=p.style.display!=='block'?'block':'none';}
+function getActiveAlerts(){var a=[];document.querySelectorAll('input[data-filter="al"]').forEach(function(cb){if(cb.checked)a.push(parseInt(cb.dataset.val));});return a;}
+function getActiveRegions(){var a=[];document.querySelectorAll('input[data-filter="region"]').forEach(function(cb){if(cb.checked)a.push(cb.dataset.val);});return a;}
+function applyFilters(){
+  var alerts=getActiveAlerts(),regions=getActiveRegions(),vis=0;
+  REEFS.forEach(function(r,i){
+    var show=alerts.indexOf(r.al)>=0&&regions.indexOf(REEF_REGION[r.id])>=0;
+    markerVisible[i]=show;
+    if(show){if(!map.hasLayer(circleMarkers[i]))circleMarkers[i].addTo(map);if(pulseRings[i]&&!map.hasLayer(pulseRings[i]))pulseRings[i].addTo(map);vis++;}
+    else{if(map.hasLayer(circleMarkers[i]))map.removeLayer(circleMarkers[i]);if(pulseRings[i]&&map.hasLayer(pulseRings[i]))map.removeLayer(pulseRings[i]);}
+  });
+  document.getElementById('fp-count').textContent='Mostrando '+vis+' de '+REEFS.length+' sitios';
+  var badge=document.getElementById('filter-active-badge');
+  badge.textContent=vis<REEFS.length?'('+vis+'/'+REEFS.length+')':'';
+  badge.style.color='#EF9F27';
+}
+function selectAllFilters(){document.querySelectorAll('#filter-panel input').forEach(function(cb){cb.checked=true;});applyFilters();}
+function selectNoneFilters(){document.querySelectorAll('#filter-panel input').forEach(function(cb){cb.checked=false;});applyFilters();}
+function selectCriticalOnly(){
+  document.querySelectorAll('input[data-filter="al"]').forEach(function(cb){cb.checked=cb.dataset.val==='3'||cb.dataset.val==='4';});
+  document.querySelectorAll('input[data-filter="region"]').forEach(function(cb){cb.checked=true;});
+  applyFilters();
+}
+function quickFilter(type){
+  selectAllFilters();
+  if(type==='critical')document.querySelectorAll('input[data-filter="al"]').forEach(function(cb){cb.checked=cb.dataset.val==='3'||cb.dataset.val==='4';});
+  else if(type==='watch')document.querySelectorAll('input[data-filter="al"]').forEach(function(cb){cb.checked=cb.dataset.val==='1'||cb.dataset.val==='2';});
+  else if(type==='ok')document.querySelectorAll('input[data-filter="al"]').forEach(function(cb){cb.checked=cb.dataset.val==='0';});
+  applyFilters();
+}
+document.addEventListener('click',function(e){
+  if(!document.getElementById('search-wrap').contains(e.target))
+    document.getElementById('search-results').style.display='none';
+  var panel=document.getElementById('filter-panel'),toggle=document.getElementById('filter-toggle');
+  if(panel.style.display==='block'&&!panel.contains(e.target)&&!toggle.contains(e.target))
+    panel.style.display='none';
+});
+
+// ── UPDATE TIMER ──
+function updateTimer(){
+  timerSeconds--;
+  if(timerSeconds<=0)timerSeconds=86400;
+  var h=Math.floor(timerSeconds/3600),m=Math.floor((timerSeconds%3600)/60),s=timerSeconds%60;
+  document.getElementById('timer-val').textContent=pad(h)+':'+pad(m)+':'+pad(s);
+}
+function pad(n){return n<10?'0'+n:n;}
+setInterval(updateTimer,1000);
+
+// ── REGIONS LIST ──
+var rl=document.getElementById('rlist');
+REEFS.forEach(function(r){
+  var pct=Math.min(100,Math.round((r.dhw/16)*100)),c=AC[r.al];
+  var d=document.createElement('div');d.className='ritem';d.id='ri-'+r.id;
+  d.innerHTML='<div><div class="rn">'+r.name+'</div><div class="rs">'+AS[r.al]+' — '+r.risk+'</div><div class="rmbar" style="width:'+pct+'%;background:'+c+';max-width:100px;"></div></div><div style="text-align:right;"><div class="rdhw" style="color:'+c+';">'+r.dhw.toFixed(1)+'</div><div class="rsst">+'+r.sst.toFixed(1)+'°C</div></div>';
+  d.onclick=function(){showReef(r.id);};
+  rl.appendChild(d);
+});
+
+// ── INIT ──
+// Hide all tabs, show only detail
+TABS.forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.style.display=t==='detail'?'block':'none';});
+document.getElementById('st-c').textContent=REEFS.filter(function(r){return r.al>=3;}).length+' críticos';
+document.getElementById('st-w').textContent=REEFS.filter(function(r){return r.al>=1&&r.al<=2;}).length+' vigilancia';
+document.getElementById('st-ok').textContent=REEFS.filter(function(r){return r.al===0;}).length+' normales';
+document.getElementById('date-disp').textContent=new Date().toLocaleDateString('es-CO',{year:'numeric',month:'short',day:'numeric'}).toUpperCase();
+buildLegend();
+applyFilters();
+</script>
+</body>
+</html>
